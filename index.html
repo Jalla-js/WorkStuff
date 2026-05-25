@@ -10,41 +10,157 @@ body{
   font-family:-apple-system;
   background:#0f1115;
   color:white;
-  padding:20px;
+  padding:16px;
 }
 
+/* HEADER */
 .header{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  margin-bottom:20px;
+  margin-bottom:16px;
 }
 
-button{
-  cursor:pointer;
+.saveBtn{
+  background:#1db954;
   border:none;
+  padding:10px 14px;
   border-radius:10px;
-  padding:8px 12px;
   color:white;
+  font-weight:700;
 }
 
-.saveBtn{ background:#1db954; }
-.addBtn{ background:#2684ff; }
+/* CATEGORY */
+.category{
+  margin-bottom:14px;
+  border-radius:14px;
+  overflow:hidden;
+}
 
-.section{ margin-bottom:25px; }
-
-.card{
-  background:#1a1d24;
+.catHeader{
   padding:12px;
-  border-radius:12px;
-  margin-bottom:10px;
+  font-weight:700;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  cursor:pointer;
+}
+
+.catContent{
+  display:none;
+  padding:10px;
+}
+
+/* THEMES */
+.diesel .catHeader{ background:#111; }
+.ev .catHeader{ background:#0f3d1f; }
+.rental .catHeader{ background:#0b2a5a; }
+
+.catHeader small{
+  opacity:0.7;
+  font-weight:400;
+}
+
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:10px;
+}
+
+/* TILE */
+.tile{
+  background:#1a1d24;
+  border-radius:14px;
+  padding:10px;
+  min-height:80px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+
+.reg{
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:0.5px;
+}
+
+.vin{
+  font-size:11px;
+  opacity:0.75;
+  word-break:break-all;
+  margin-top:6px;
+}
+
+/* BUTTONS */
+.btnRow{
+  display:flex;
+  gap:6px;
+  margin-top:8px;
 }
 
 .btn{
-  margin-right:6px;
+  flex:1;
+  font-size:12px;
+  padding:6px;
+  border:none;
+  border-radius:8px;
   background:#313846;
+  color:white;
 }
 
+.addBtn{
+  margin-top:10px;
+  width:100%;
+  background:#2684ff;
+}
+
+/* MODAL */
+.modalBackdrop{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,0.6);
+  display:none;
+  justify-content:center;
+  align-items:center;
+}
+
+.modal{
+  background:#1a1d24;
+  padding:16px;
+  border-radius:14px;
+  width:90%;
+  max-width:320px;
+}
+
+.modal input{
+  width:100%;
+  margin-bottom:10px;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  background:#0f1115;
+  color:white;
+}
+
+.modalActions{
+  display:flex;
+  gap:8px;
+}
+
+.modalActions button{
+  flex:1;
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  color:white;
+}
+
+.saveM{ background:#1db954; }
+.cancelM{ background:#444; }
+
+/* TOAST */
 .toast{
   position:fixed;
   bottom:20px;
@@ -56,7 +172,12 @@ button{
   opacity:0;
   transition:0.3s;
 }
+
 .show{ opacity:1; }
+
+@media (max-width:380px){
+  .grid{ grid-template-columns:1fr; }
+}
 </style>
 </head>
 
@@ -68,20 +189,36 @@ button{
 </div>
 
 <div id="app"></div>
+
+<!-- MODAL -->
+<div class="modalBackdrop" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle">Add Vehicle</h3>
+
+    <input id="nameInput" placeholder="Vehicle Name / Reg"/>
+    <input id="vinInput" placeholder="VIN"/>
+
+    <div class="modalActions">
+      <button class="saveM" onclick="confirmModal()">Save</button>
+      <button class="cancelM" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast">Saved</div>
 
 <script>
 
 const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co"
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc"
+const SUPABASE_KEY = "YOUR_ANON_KEY_HERE"
 
-let data = {
-  diesel: [],
-  ev: [],
-  rental: []
-}
+let data = { diesel:[], ev:[], rental:[] }
+
+let currentType = null
+let editIndex = null
 
 const toastEl = document.getElementById("toast")
+const modal = document.getElementById("modal")
 
 function toast(msg){
   toastEl.innerText = msg
@@ -89,10 +226,9 @@ function toast(msg){
   setTimeout(()=>toastEl.classList.remove("show"),1500)
 }
 
-// ======================================
-// SUPABASE LOAD
-// ======================================
-
+/* =========================
+   LOAD
+========================= */
 async function loadData(){
   try{
     const res = await fetch(
@@ -100,7 +236,7 @@ async function loadData(){
       {
         headers:{
           apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`
+          Authorization:`Bearer ${SUPABASE_KEY}`
         }
       }
     )
@@ -108,101 +244,134 @@ async function loadData(){
     const json = await res.json()
     if(json?.[0]?.data) data = json[0].data
 
-  } catch(e){
-    console.log("Load failed, using default")
-  }
+  }catch(e){}
 
   render()
 }
 
-// ======================================
-// SUPABASE SAVE
-// ======================================
-
+/* =========================
+   SAVE
+========================= */
 async function saveData(){
-  try{
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,
-      {
-        method:"PATCH",
-        headers:{
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-          "Content-Type":"application/json"
-        },
-        body: JSON.stringify({ data })
-      }
-    )
+  await fetch(
+    `${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,
+    {
+      method:"PATCH",
+      headers:{
+        apikey: SUPABASE_KEY,
+        Authorization:`Bearer ${SUPABASE_KEY}`,
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({data})
+    }
+  )
 
-    toast("Saved to Supabase")
-
-  } catch(e){
-    toast("Save failed")
-  }
+  toast("Saved")
 }
 
-// ======================================
-// ACTIONS
-// ======================================
+/* =========================
+   MODAL
+========================= */
+function openAdd(type){
+  currentType = type
+  editIndex = null
 
-function addVan(type){
-  const name = prompt("Name")
-  const vin = prompt("VIN")
-  if(!name || !vin) return
+  document.getElementById("modalTitle").innerText = "Add Vehicle"
+  document.getElementById("nameInput").value = ""
+  document.getElementById("vinInput").value = ""
 
-  data[type].push({name, vin})
-  render()
+  modal.style.display = "flex"
 }
 
-function editVan(type, i){
+function openEdit(type,i){
+  currentType = type
+  editIndex = i
+
   const v = data[type][i]
 
-  const name = prompt("Name", v.name)
-  const vin = prompt("VIN", v.vin)
+  document.getElementById("modalTitle").innerText = "Edit Vehicle"
+  document.getElementById("nameInput").value = v.name
+  document.getElementById("vinInput").value = v.vin
+
+  modal.style.display = "flex"
+}
+
+function closeModal(){
+  modal.style.display = "none"
+}
+
+function confirmModal(){
+  const name = document.getElementById("nameInput").value
+  const vin = document.getElementById("vinInput").value
 
   if(!name || !vin) return
 
-  data[type][i] = {name, vin}
+  if(editIndex === null){
+    data[currentType].push({name,vin})
+  }else{
+    data[currentType][editIndex] = {name,vin}
+  }
+
+  closeModal()
   render()
+  toast("Updated")
 }
 
-function deleteVan(type,i){
+/* =========================
+   ACTIONS
+========================= */
+function deleteItem(type,i){
   data[type].splice(i,1)
   render()
+  toast("Deleted")
 }
 
 async function copyVIN(vin){
   try{
     await navigator.clipboard.writeText(vin)
     toast("Copied")
-  } catch{
+  }catch{
     alert(vin)
   }
 }
 
-// ======================================
-// RENDER
-// ======================================
-
+/* =========================
+   RENDER
+========================= */
 function section(title,type){
-  let html = `<div class="section"><h3>${title}</h3>`
-  html += `<button class="addBtn" onclick="addVan('${type}')">+ Add</button>`
+
+  let html = `<div class="category ${type}">`
+
+  html += `<div class="catHeader" onclick="toggle('${type}')">
+    ${title}
+    <small>${data[type].length}</small>
+  </div>`
+
+  html += `<div class="catContent" id="${type}">`
+
+  html += `<button class="addBtn" onclick="openAdd('${type}')">+ Add</button>`
+
+  html += `<div class="grid">`
 
   for(let i=0;i<data[type].length;i++){
     const v = data[type][i]
 
-    html += `<div class="card">
-      <div><b>${v.name}</b></div>
-      <div>${v.vin}</div>
-      <div style="margin-top:8px;">
+    html += `<div class="tile">
+      <div>
+        <div class="reg">${v.name}</div>
+        <div class="vin">${v.vin}</div>
+      </div>
+
+      <div class="btnRow">
         <button class="btn" onclick="copyVIN('${v.vin}')">Copy</button>
-        <button class="btn" onclick="editVan('${type}',${i})">Edit</button>
-        <button class="btn" onclick="deleteVan('${type}',${i})">Delete</button>
+        <button class="btn" onclick="openEdit('${type}',${i})">Edit</button>
+        <button class="btn" onclick="deleteItem('${type}',${i})">Del</button>
       </div>
     </div>`
   }
 
-  html += "</div>"
+  html += `</div></div></div>`
+
   return html
 }
 
@@ -213,7 +382,15 @@ function render(){
     section("Rental Vans","rental")
 }
 
-// start
+/* =========================
+   TOGGLE
+========================= */
+function toggle(type){
+  const el = document.getElementById(type)
+  el.style.display = el.style.display === "block" ? "none" : "block"
+}
+
+/* START */
 loadData()
 
 </script>
