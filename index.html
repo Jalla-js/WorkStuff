@@ -13,7 +13,6 @@ body{
   background:#0f1115;
   color:white;
   padding:16px;
-  -webkit-text-size-adjust:100%;
 }
 
 .header{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
@@ -42,7 +41,7 @@ h2{margin:0;font-size:22px;}
 .tile{
   background:#1a1d24;border-radius:16px;padding:14px;
   min-height:110px;display:flex;flex-direction:column;
-  justify-content:space-between;box-shadow:0 6px 18px rgba(0,0,0,0.35);
+  justify-content:space-between;
 }
 
 .reg{font-size:18px;font-weight:800;}
@@ -99,7 +98,9 @@ input,select{
 
 <div class="header">
   <h2>Van VIN Manager</h2>
+
   <input class="search" id="search" placeholder="Search reg..." oninput="render()"/>
+
   <div class="topRow">
     <button class="addGlobal" onclick="openAdd()">+ Add Vehicle</button>
     <button class="saveBtn" onclick="saveData()">Save</button>
@@ -111,6 +112,7 @@ input,select{
 <!-- MODAL -->
 <div class="modalBackdrop" id="modal">
   <div class="modal">
+
     <h3 id="modalTitle">Add Vehicle</h3>
 
     <div class="field">
@@ -137,13 +139,16 @@ input,select{
       <button class="saveM" onclick="confirmModal()">Save</button>
       <button class="cancelM" onclick="closeModal()">Cancel</button>
     </div>
+
   </div>
 </div>
 
 <!-- SCAN MODAL -->
 <div class="modalBackdrop" id="scanModal">
   <div class="modal">
+
     <h3>Scan VIN</h3>
+
     <video id="video" class="scanVideo"></video>
 
     <div class="field">
@@ -155,6 +160,7 @@ input,select{
       <button class="saveM" onclick="confirmScan()">Confirm</button>
       <button class="cancelM" onclick="closeScan()">Cancel</button>
     </div>
+
   </div>
 </div>
 
@@ -162,9 +168,21 @@ input,select{
 
 <script>
 
+/* =======================
+   SUPABASE
+======================= */
 const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co"
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc"
 
+/* =======================
+   SAFE DOM HELPERS
+======================= */
+const modalEl = () => document.getElementById("modal")
+const scanModalEl = () => document.getElementById("scanModal")
+
+/* =======================
+   STATE
+======================= */
 let data = { diesel:[], ev:[], rental:[] }
 let currentType = null
 let editIndex = null
@@ -172,17 +190,19 @@ let editIndex = null
 let codeReader = null
 let stream = null
 
-const toastEl = document.getElementById("toast")
-
+/* =======================
+   TOAST
+======================= */
 function toast(msg){
-  toastEl.innerText = msg
-  toastEl.classList.add("show")
-  setTimeout(()=>toastEl.classList.remove("show"),1500)
+  const t = document.getElementById("toast")
+  t.innerText = msg
+  t.classList.add("show")
+  setTimeout(()=>t.classList.remove("show"),1500)
 }
 
-/* =========================
-   🔥 FULL CAMERA KILL SWITCH
-========================= */
+/* =======================
+   CAMERA HARD STOP
+======================= */
 function stopCamera(){
   try{
 
@@ -203,20 +223,177 @@ function stopCamera(){
     }
 
   }catch(e){
-    console.log("camera stop error", e)
+    console.log(e)
   }
 }
 
-/* ========================= */
-function closeScan(){
-  document.getElementById("scanModal").style.display="none"
-  stopCamera()
+/* =======================
+   LOAD DATA (SAFE)
+======================= */
+async function loadData(){
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`,
+      {
+        headers:{
+          apikey:SUPABASE_KEY,
+          Authorization:`Bearer ${SUPABASE_KEY}`
+        }
+      }
+    )
+
+    const json = await res.json()
+
+    if(Array.isArray(json) && json.length && json[0].data){
+      data = json[0].data
+    }
+
+  }catch(e){
+    console.log("load error", e)
+  }
+
+  data = {
+    diesel: data?.diesel || [],
+    ev: data?.ev || [],
+    rental: data?.rental || []
+  }
+
+  render()
 }
 
-/* ========================= */
+/* =======================
+   SAVE
+======================= */
+async function saveData(){
+  try{
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,
+      {
+        method:"PATCH",
+        headers:{
+          apikey:SUPABASE_KEY,
+          Authorization:`Bearer ${SUPABASE_KEY}`,
+          "Content-Type":"application/json"
+        },
+        body:JSON.stringify({data})
+      }
+    )
+
+    toast("Saved")
+
+  }catch(e){
+    toast("Save failed")
+  }
+}
+
+/* =======================
+   FILTER
+======================= */
+function filtered(type){
+  const q = (document.getElementById("search")?.value || "").toLowerCase()
+  return (data?.[type] || []).filter(v =>
+    (v?.name || "").toLowerCase().includes(q)
+  )
+}
+
+/* =======================
+   MODAL
+======================= */
+function openAdd(){
+  currentType = null
+  editIndex = null
+
+  document.getElementById("modalTitle").innerText = "Add Vehicle"
+  document.getElementById("typeInput").value = "diesel"
+  document.getElementById("nameInput").value = ""
+  document.getElementById("vinInput").value = ""
+
+  modalEl().style.display = "flex"
+}
+
+function closeModal(){
+  modalEl().style.display = "none"
+}
+
+/* =======================
+   SAVE MODAL
+======================= */
+function confirmModal(){
+  const type = document.getElementById("typeInput").value
+  const name = document.getElementById("nameInput").value
+  const vin = document.getElementById("vinInput").value
+
+  if(!name || !vin) return
+
+  if(editIndex === null){
+    data[type].push({name,vin})
+  }else{
+    data[currentType][editIndex] = {name,vin}
+  }
+
+  closeModal()
+  render()
+}
+
+/* =======================
+   DELETE + COPY
+======================= */
+function del(type,i){
+  data[type].splice(i,1)
+  render()
+}
+
+async function copyVIN(vin){
+  await navigator.clipboard.writeText(vin)
+  toast("Copied")
+}
+
+/* =======================
+   RENDER
+======================= */
+function section(title,type){
+
+  const list = filtered(type)
+
+  let html = `<div class="section">`
+  html += `<div class="sectionTitle">${title} (${list.length})</div>`
+  html += `<div class="grid">`
+
+  for(const v of list){
+    const i = data[type].indexOf(v)
+
+    html += `
+    <div class="tile">
+      <div>
+        <div class="reg">${v.name}</div>
+        <div class="vin">${v.vin}</div>
+      </div>
+
+      <div class="btnRow">
+        <button class="btn" onclick="copyVIN('${v.vin}')">Copy</button>
+        <button class="btn" onclick="openEdit('${type}',${i})">Edit</button>
+        <button class="btn" onclick="del('${type}',${i})">Del</button>
+      </div>
+    </div>`
+  }
+
+  html += `</div></div>`
+  return html
+}
+
+function render(){
+  document.getElementById("app").innerHTML =
+    section("Diesel","diesel") +
+    section("EV","ev") +
+    section("Rental","rental")
+}
+
+/* =======================
+   SCAN (FIXED)
+======================= */
 async function startScan(){
 
-  document.getElementById("scanModal").style.display="flex"
+  scanModalEl().style.display = "flex"
 
   const video = document.getElementById("video")
   const result = document.getElementById("scanResult")
@@ -236,24 +413,19 @@ async function startScan(){
     codeReader.decodeFromVideoDevice(
       null,
       video,
-      (res, err) => {
-
+      (res) => {
         if(res){
           result.value = res.getText()
-
-          // 🔥 HARD STOP EVERYTHING
           stopCamera()
         }
-
       }
     )
 
   }catch(e){
-    alert("Camera error or unsupported device")
+    alert("Camera error")
   }
 }
 
-/* ========================= */
 function confirmScan(){
   document.getElementById("vinInput").value =
     document.getElementById("scanResult").value
@@ -261,25 +433,29 @@ function confirmScan(){
   closeScan()
 }
 
-/* ========================= */
-function openAdd(){
-  currentType = null
-  editIndex = null
-
-  document.getElementById("modalTitle").innerText = "Add Vehicle"
-  document.getElementById("typeInput").value = "diesel"
-  document.getElementById("nameInput").value = ""
-  document.getElementById("vinInput").value = ""
-
-  modal.style.display="flex"
+function closeScan(){
+  scanModalEl().style.display = "none"
+  stopCamera()
 }
 
-function closeModal(){
-  modal.style.display="none"
+/* =======================
+   EDIT (FIXED MISSING)
+======================= */
+function openEdit(type,i){
+  currentType = type
+  editIndex = i
+
+  const v = data[type][i]
+
+  document.getElementById("modalTitle").innerText = "Edit Vehicle"
+  document.getElementById("typeInput").value = type
+  document.getElementById("nameInput").value = v.name
+  document.getElementById("vinInput").value = v.vin
+
+  modalEl().style.display = "flex"
 }
 
-/* (rest of your original logic unchanged below) */
-
+/* START */
 loadData()
 
 </script>
