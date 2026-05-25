@@ -109,7 +109,7 @@ input,select{
 
 <div id="app"></div>
 
-<!-- MODAL -->
+<!-- ADD / EDIT MODAL -->
 <div class="modalBackdrop" id="modal">
   <div class="modal">
 
@@ -168,31 +168,32 @@ input,select{
 
 <script>
 
-/* =======================
+/* =========================
    SUPABASE
-======================= */
+========================= */
 const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co"
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc"
 
-/* =======================
-   SAFE DOM HELPERS
-======================= */
+/* =========================
+   DOM HELPERS
+========================= */
 const modalEl = () => document.getElementById("modal")
 const scanModalEl = () => document.getElementById("scanModal")
 
-/* =======================
+/* =========================
    STATE
-======================= */
+========================= */
 let data = { diesel:[], ev:[], rental:[] }
 let currentType = null
 let editIndex = null
 
 let codeReader = null
 let stream = null
+let scanningActive = false
 
-/* =======================
+/* =========================
    TOAST
-======================= */
+========================= */
 function toast(msg){
   const t = document.getElementById("toast")
   t.innerText = msg
@@ -200,11 +201,19 @@ function toast(msg){
   setTimeout(()=>t.classList.remove("show"),1500)
 }
 
-/* =======================
-   CAMERA HARD STOP
-======================= */
+/* =========================
+   CAMERA HARD KILL (REAL FIX)
+========================= */
 function stopCamera(){
+
+  scanningActive = false
+
   try{
+
+    if(codeReader){
+      try{ codeReader.reset() }catch(e){}
+      codeReader = null
+    }
 
     if(stream){
       stream.getTracks().forEach(t => t.stop())
@@ -214,22 +223,19 @@ function stopCamera(){
     const video = document.getElementById("video")
     if(video){
       video.pause()
+      video.removeAttribute("src")
       video.srcObject = null
-    }
-
-    if(codeReader){
-      try{ codeReader.reset() }catch(e){}
-      codeReader = null
+      video.load()
     }
 
   }catch(e){
-    console.log(e)
+    console.log("stopCamera error", e)
   }
 }
 
-/* =======================
-   LOAD DATA (SAFE)
-======================= */
+/* =========================
+   LOAD DATA
+========================= */
 async function loadData(){
   try{
     const res = await fetch(
@@ -261,9 +267,9 @@ async function loadData(){
   render()
 }
 
-/* =======================
+/* =========================
    SAVE
-======================= */
+========================= */
 async function saveData(){
   try{
     await fetch(
@@ -286,19 +292,19 @@ async function saveData(){
   }
 }
 
-/* =======================
+/* =========================
    FILTER
-======================= */
+========================= */
 function filtered(type){
   const q = (document.getElementById("search")?.value || "").toLowerCase()
-  return (data?.[type] || []).filter(v =>
-    (v?.name || "").toLowerCase().includes(q)
+  return (data[type] || []).filter(v =>
+    (v.name || "").toLowerCase().includes(q)
   )
 }
 
-/* =======================
+/* =========================
    MODAL
-======================= */
+========================= */
 function openAdd(){
   currentType = null
   editIndex = null
@@ -311,14 +317,29 @@ function openAdd(){
   modalEl().style.display = "flex"
 }
 
+function openEdit(type,i){
+  currentType = type
+  editIndex = i
+
+  const v = data[type][i]
+
+  document.getElementById("modalTitle").innerText = "Edit Vehicle"
+  document.getElementById("typeInput").value = type
+  document.getElementById("nameInput").value = v.name
+  document.getElementById("vinInput").value = v.vin
+
+  modalEl().style.display = "flex"
+}
+
 function closeModal(){
   modalEl().style.display = "none"
 }
 
-/* =======================
+/* =========================
    SAVE MODAL
-======================= */
+========================= */
 function confirmModal(){
+
   const type = document.getElementById("typeInput").value
   const name = document.getElementById("nameInput").value
   const vin = document.getElementById("vinInput").value
@@ -335,9 +356,9 @@ function confirmModal(){
   render()
 }
 
-/* =======================
-   DELETE + COPY
-======================= */
+/* =========================
+   DELETE / COPY
+========================= */
 function del(type,i){
   data[type].splice(i,1)
   render()
@@ -348,9 +369,9 @@ async function copyVIN(vin){
   toast("Copied")
 }
 
-/* =======================
+/* =========================
    RENDER
-======================= */
+========================= */
 function section(title,type){
 
   const list = filtered(type)
@@ -388,12 +409,13 @@ function render(){
     section("Rental","rental")
 }
 
-/* =======================
-   SCAN (FIXED)
-======================= */
+/* =========================
+   SCANNER (FULL FIXED)
+========================= */
 async function startScan(){
 
   scanModalEl().style.display = "flex"
+  scanningActive = true
 
   const video = document.getElementById("video")
   const result = document.getElementById("scanResult")
@@ -414,14 +436,19 @@ async function startScan(){
       null,
       video,
       (res) => {
+
+        if(!scanningActive) return
+
         if(res){
           result.value = res.getText()
           stopCamera()
         }
+
       }
     )
 
   }catch(e){
+    console.log(e)
     alert("Camera error")
   }
 }
@@ -436,23 +463,6 @@ function confirmScan(){
 function closeScan(){
   scanModalEl().style.display = "none"
   stopCamera()
-}
-
-/* =======================
-   EDIT (FIXED MISSING)
-======================= */
-function openEdit(type,i){
-  currentType = type
-  editIndex = i
-
-  const v = data[type][i]
-
-  document.getElementById("modalTitle").innerText = "Edit Vehicle"
-  document.getElementById("typeInput").value = type
-  document.getElementById("nameInput").value = v.name
-  document.getElementById("vinInput").value = v.vin
-
-  modalEl().style.display = "flex"
 }
 
 /* START */
