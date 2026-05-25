@@ -4,6 +4,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
 <title>Van VIN Manager</title>
 
+<!-- ZXing Barcode Scanner (FIXED RELIABLE VERSION) -->
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
+
 <style>
 body{
   margin:0;
@@ -197,7 +200,7 @@ input, select{
 .saveM{ background:#1db954; }
 .cancelM{ background:#444; }
 
-/* SCAN MODAL */
+/* SCAN VIDEO */
 .scanVideo{
   width:100%;
   border-radius:14px;
@@ -311,6 +314,8 @@ let data = { diesel:[], ev:[], rental:[] }
 
 let currentType = null
 let editIndex = null
+
+let codeReader = null
 let stream = null
 
 const toastEl = document.getElementById("toast")
@@ -322,7 +327,7 @@ function toast(msg){
 }
 
 /* =========================
-   SAFE LOAD (NO CRASH)
+   SAFE LOAD
 ========================= */
 async function loadData(){
 
@@ -343,11 +348,8 @@ async function loadData(){
       data = json[0].data
     }
 
-  }catch(e){
-    console.log("Load failed:", e)
-  }
+  }catch(e){}
 
-  // ENSURE STRUCTURE NEVER BREAKS UI
   data = {
     diesel: data?.diesel || [],
     ev: data?.ev || [],
@@ -361,7 +363,6 @@ async function loadData(){
    SAVE
 ========================= */
 async function saveData(){
-
   try{
     await fetch(
       `${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,
@@ -377,22 +378,17 @@ async function saveData(){
     )
 
     toast("Saved")
-
   }catch(e){
     toast("Save failed")
   }
 }
 
 /* =========================
-   SAFE SEARCH
+   SEARCH
 ========================= */
 function filtered(type){
-
   const q = (document.getElementById("search")?.value || "").toLowerCase()
-
-  const arr = data?.[type] || []
-
-  return arr.filter(v =>
+  return (data?.[type] || []).filter(v =>
     (v?.name || "").toLowerCase().includes(q)
   )
 }
@@ -472,11 +468,11 @@ async function copyVIN(vin){
 }
 
 /* =========================
-   RENDER (SAFE)
+   RENDER
 ========================= */
 function section(title,type){
 
-  const list = filtered(type) || []
+  const list = filtered(type)
 
   let html = `<div class="section">`
   html += `<div class="sectionTitle">${title} (${list.length})</div>`
@@ -516,8 +512,9 @@ function render(){
 }
 
 /* =========================
-   SCANNER (SAFE + OPTIONAL)
+   ZXING SCANNER (FIXED)
 ========================= */
+
 async function startScan(){
 
   document.getElementById("scanModal").style.display="flex"
@@ -527,11 +524,6 @@ async function startScan(){
 
   try{
 
-    if(!navigator.mediaDevices){
-      alert("Camera not supported")
-      return
-    }
-
     stream = await navigator.mediaDevices.getUserMedia({
       video:{ facingMode:"environment" }
     })
@@ -539,49 +531,27 @@ async function startScan(){
     video.srcObject = stream
     await video.play()
 
-    let detector = null
+    const { BrowserMultiFormatReader } = ZXingBrowser
+    codeReader = new BrowserMultiFormatReader()
 
-    try{
-      if("BarcodeDetector" in window){
-        detector = new BarcodeDetector({
-          formats:["code_128","ean_13","qr_code","data_matrix"]
-        })
+    codeReader.decodeFromVideoDevice(
+      null,
+      video,
+      (res, err) => {
+        if(res){
+          result.value = res.getText()
+
+          if(stream) stream.getTracks().forEach(t=>t.stop())
+
+          try{
+            codeReader.reset()
+          }catch(e){}
+        }
       }
-    }catch(e){}
-
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")
-
-    function tick(){
-
-      if(!video.videoWidth){
-        requestAnimationFrame(tick)
-        return
-      }
-
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-
-      ctx.drawImage(video,0,0)
-
-      if(detector){
-        detector.detect(canvas)
-          .then(codes=>{
-            if(codes.length){
-              result.value = codes[0].rawValue
-              if(stream) stream.getTracks().forEach(t=>t.stop())
-            }
-          })
-          .catch(()=>{})
-      }
-
-      requestAnimationFrame(tick)
-    }
-
-    tick()
+    )
 
   }catch(e){
-    alert("Camera blocked or unsupported")
+    alert("Camera error or unsupported device")
   }
 }
 
@@ -594,7 +564,15 @@ function confirmScan(){
 
 function closeScan(){
   document.getElementById("scanModal").style.display="none"
-  if(stream) stream.getTracks().forEach(t=>t.stop())
+
+  if(stream){
+    stream.getTracks().forEach(t=>t.stop())
+    stream = null
+  }
+
+  try{
+    if(codeReader) codeReader.reset()
+  }catch(e){}
 }
 
 /* START */
