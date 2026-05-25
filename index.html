@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Van VIN Manager</title>
+
+<style>
+body{
+  margin:0;
+  font-family:-apple-system;
+  background:#0f1115;
+  color:white;
+  padding:20px;
+}
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:20px;
+}
+
+button{
+  cursor:pointer;
+  border:none;
+  border-radius:10px;
+  padding:8px 12px;
+  color:white;
+}
+
+.saveBtn{ background:#1db954; }
+.addBtn{ background:#2684ff; }
+
+.section{ margin-bottom:25px; }
+
+.card{
+  background:#1a1d24;
+  padding:12px;
+  border-radius:12px;
+  margin-bottom:10px;
+}
+
+.btn{
+  margin-right:6px;
+  background:#313846;
+}
+
+.toast{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#1db954;
+  padding:10px 16px;
+  border-radius:10px;
+  opacity:0;
+  transition:0.3s;
+}
+.show{ opacity:1; }
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h2>Van VIN Manager</h2>
+  <button class="saveBtn" onclick="saveData()">Save</button>
+</div>
+
+<div id="app"></div>
+<div id="toast" class="toast">Saved</div>
+
+<script>
+
+const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc"
+
+let data = {
+  diesel: [],
+  ev: [],
+  rental: []
+}
+
+const toastEl = document.getElementById("toast")
+
+function toast(msg){
+  toastEl.innerText = msg
+  toastEl.classList.add("show")
+  setTimeout(()=>toastEl.classList.remove("show"),1500)
+}
+
+// ======================================
+// SUPABASE LOAD
+// ======================================
+
+async function loadData(){
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`,
+      {
+        headers:{
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`
+        }
+      }
+    )
+
+    const json = await res.json()
+    if(json?.[0]?.data) data = json[0].data
+
+  } catch(e){
+    console.log("Load failed, using default")
+  }
+
+  render()
+}
+
+// ======================================
+// SUPABASE SAVE
+// ======================================
+
+async function saveData(){
+  try{
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,
+      {
+        method:"PATCH",
+        headers:{
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "Content-Type":"application/json"
+        },
+        body: JSON.stringify({ data })
+      }
+    )
+
+    toast("Saved to Supabase")
+
+  } catch(e){
+    toast("Save failed")
+  }
+}
+
+// ======================================
+// ACTIONS
+// ======================================
+
+function addVan(type){
+  const name = prompt("Name")
+  const vin = prompt("VIN")
+  if(!name || !vin) return
+
+  data[type].push({name, vin})
+  render()
+}
+
+function editVan(type, i){
+  const v = data[type][i]
+
+  const name = prompt("Name", v.name)
+  const vin = prompt("VIN", v.vin)
+
+  if(!name || !vin) return
+
+  data[type][i] = {name, vin}
+  render()
+}
+
+function deleteVan(type,i){
+  data[type].splice(i,1)
+  render()
+}
+
+async function copyVIN(vin){
+  try{
+    await navigator.clipboard.writeText(vin)
+    toast("Copied")
+  } catch{
+    alert(vin)
+  }
+}
+
+// ======================================
+// RENDER
+// ======================================
+
+function section(title,type){
+  let html = `<div class="section"><h3>${title}</h3>`
+  html += `<button class="addBtn" onclick="addVan('${type}')">+ Add</button>`
+
+  for(let i=0;i<data[type].length;i++){
+    const v = data[type][i]
+
+    html += `<div class="card">
+      <div><b>${v.name}</b></div>
+      <div>${v.vin}</div>
+      <div style="margin-top:8px;">
+        <button class="btn" onclick="copyVIN('${v.vin}')">Copy</button>
+        <button class="btn" onclick="editVan('${type}',${i})">Edit</button>
+        <button class="btn" onclick="deleteVan('${type}',${i})">Delete</button>
+      </div>
+    </div>`
+  }
+
+  html += "</div>"
+  return html
+}
+
+function render(){
+  document.getElementById("app").innerHTML =
+    section("Diesel Vans","diesel") +
+    section("EV Vans","ev") +
+    section("Rental Vans","rental")
+}
+
+// start
+loadData()
+
+</script>
+
+</body>
+</html>
