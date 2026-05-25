@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+
 <title>Van VIN Manager</title>
 
 <style>
+
 body{
   margin:0;
   font-family:-apple-system;
   background:#0f1115;
   color:white;
   padding:16px;
+  -webkit-text-size-adjust:100%;
 }
 
 /* HEADER */
@@ -21,26 +24,25 @@ body{
   margin-bottom:14px;
 }
 
-.topRow{
-  display:flex;
-  justify-content:space-between;
-  gap:10px;
-}
-
 h2{
   margin:0;
   font-size:22px;
 }
 
-/* BUTTONS */
+/* TOP BUTTONS */
+.topRow{
+  display:flex;
+  gap:10px;
+}
+
 .saveBtn, .addGlobal{
   flex:1;
   border:none;
-  border-radius:12px;
-  padding:12px;
+  border-radius:14px;
+  padding:14px;
   color:white;
   font-weight:700;
-  font-size:15px;
+  font-size:16px;
 }
 
 .saveBtn{ background:#1db954; }
@@ -50,42 +52,32 @@ h2{
 .search{
   width:100%;
   padding:14px;
-  border-radius:12px;
+  border-radius:14px;
   border:none;
   background:#1a1d24;
   color:white;
   font-size:16px;
 }
 
-/* CATEGORY */
-.category{
-  margin-bottom:14px;
-  border-radius:14px;
-  overflow:hidden;
+/* SECTION */
+.section{
+  margin-bottom:18px;
 }
 
-.catHeader{
-  padding:14px;
-  font-weight:700;
-  font-size:18px;
+.sectionTitle{
   display:flex;
   justify-content:space-between;
-  cursor:pointer;
-}
-
-.catHeader small{
-  opacity:0.7;
+  align-items:center;
+  font-size:18px;
+  font-weight:700;
+  margin:10px 0;
+  opacity:0.9;
 }
 
 /* THEMES */
-.diesel .catHeader{ background:#111; }
-.ev .catHeader{ background:#0f3d1f; }
-.rental .catHeader{ background:#0b2a5a; }
-
-.catContent{
-  display:none;
-  padding:12px;
-}
+.dieselTitle{ color:#aaa; }
+.evTitle{ color:#2ecc71; }
+.rentalTitle{ color:#4da3ff; }
 
 /* GRID */
 .grid{
@@ -103,22 +95,22 @@ h2{
   display:flex;
   flex-direction:column;
   justify-content:space-between;
+  box-shadow:0 6px 18px rgba(0,0,0,0.35);
 }
 
 .reg{
   font-size:18px;
   font-weight:800;
-  letter-spacing:0.5px;
 }
 
 .vin{
   font-size:13px;
-  opacity:0.75;
+  opacity:0.7;
   margin-top:6px;
   word-break:break-all;
 }
 
-/* BUTTONS */
+/* TILE BUTTONS */
 .btnRow{
   display:flex;
   gap:8px;
@@ -135,25 +127,36 @@ h2{
   color:white;
 }
 
-/* MODAL */
+/* MODAL BACKDROP */
 .modalBackdrop{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,0.6);
+  background:rgba(0,0,0,0.65);
   display:none;
   justify-content:center;
-  align-items:center;
+  align-items:flex-end;
+  padding:14px;
 }
 
+/* MODAL CARD (NEW LOOK) */
 .modal{
-  width:92%;
-  height:85%;
-  background:#1a1d24;
-  border-radius:16px;
+  width:100%;
+  max-width:420px;
+  height:88%;
+  background:rgba(26,29,36,0.95);
+  backdrop-filter: blur(14px);
+  border-radius:22px;
   padding:18px;
   display:flex;
   flex-direction:column;
-  gap:12px;
+  gap:14px;
+  box-shadow:0 -10px 40px rgba(0,0,0,0.6);
+  animation: slideUp 0.25s ease-out;
+}
+
+@keyframes slideUp{
+  from{ transform:translateY(40px); opacity:0; }
+  to{ transform:translateY(0); opacity:1; }
 }
 
 .modal h3{
@@ -161,7 +164,7 @@ h2{
   font-size:20px;
 }
 
-/* INPUTS */
+/* INPUT FIELDS */
 .field{
   display:flex;
   flex-direction:column;
@@ -169,8 +172,8 @@ h2{
 }
 
 label{
-  font-size:14px;
-  opacity:0.8;
+  font-size:13px;
+  opacity:0.7;
 }
 
 input, select{
@@ -180,6 +183,7 @@ input, select{
   background:#0f1115;
   color:white;
   font-size:16px;
+  outline:none;
 }
 
 /* MODAL ACTIONS */
@@ -193,7 +197,7 @@ input, select{
   flex:1;
   padding:14px;
   border:none;
-  border-radius:12px;
+  border-radius:14px;
   font-size:16px;
   color:white;
 }
@@ -209,7 +213,7 @@ input, select{
   transform:translateX(-50%);
   background:#1db954;
   padding:12px 18px;
-  border-radius:12px;
+  border-radius:14px;
   opacity:0;
   transition:0.3s;
 }
@@ -219,6 +223,7 @@ input, select{
 @media(max-width:420px){
   .grid{ grid-template-columns:1fr; }
 }
+
 </style>
 </head>
 
@@ -228,7 +233,7 @@ input, select{
 
   <h2>Van VIN Manager</h2>
 
-  <input class="search" id="search" placeholder="Search vehicle reg..." oninput="render()"/>
+  <input class="search" id="search" placeholder="Search reg..." oninput="render()"/>
 
   <div class="topRow">
     <button class="addGlobal" onclick="openAdd()">+ Add Vehicle</button>
@@ -256,7 +261,7 @@ input, select{
     </div>
 
     <div class="field">
-      <label>Vehicle Reg / Name</label>
+      <label>Vehicle Reg</label>
       <input id="nameInput"/>
     </div>
 
@@ -332,7 +337,7 @@ async function saveData(){
   toast("Saved")
 }
 
-/* SEARCH FILTER */
+/* SEARCH */
 function getFiltered(type){
   const q = document.getElementById("search").value.toLowerCase()
   return data[type].filter(v =>
@@ -403,25 +408,19 @@ async function copyVIN(vin){
 }
 
 /* RENDER */
-function section(title,type){
+function section(title,type,cls){
 
   const list = getFiltered(type)
 
-  let html = `<div class="category ${type}">`
+  let html = `<div class="section">`
 
-  html += `<div class="catHeader" onclick="toggle('${type}')">
-    ${title}
-    <small>${list.length}</small>
-  </div>`
-
-  html += `<div class="catContent" id="${type}" style="display:block;">`
+  html += `<div class="sectionTitle ${cls}">${title}</div>`
 
   html += `<div class="grid">`
 
   for(let i=0;i<list.length;i++){
 
     const v = list[i]
-
     const realIndex = data[type].indexOf(v)
 
     html += `<div class="tile">
@@ -438,21 +437,16 @@ function section(title,type){
     </div>`
   }
 
-  html += `</div></div></div>`
+  html += `</div></div>`
 
   return html
 }
 
 function render(){
   document.getElementById("app").innerHTML =
-    section("Diesel","diesel") +
-    section("EV","ev") +
-    section("Rental","rental")
-}
-
-function toggle(type){
-  const el = document.getElementById(type)
-  el.style.display = el.style.display==="none"?"block":"none"
+    section("Diesel","diesel","dieselTitle") +
+    section("EV","ev","evTitle") +
+    section("Rental","rental","rentalTitle")
 }
 
 /* START */
