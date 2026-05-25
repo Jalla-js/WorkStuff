@@ -2,11 +2,9 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-
 <title>Van VIN Manager</title>
 
 <style>
-
 body{
   margin:0;
   font-family:-apple-system;
@@ -29,7 +27,6 @@ h2{
   font-size:22px;
 }
 
-/* TOP BUTTONS */
 .topRow{
   display:flex;
   gap:10px;
@@ -67,17 +64,10 @@ h2{
 .sectionTitle{
   display:flex;
   justify-content:space-between;
-  align-items:center;
   font-size:18px;
   font-weight:700;
   margin:10px 0;
-  opacity:0.9;
 }
-
-/* THEMES */
-.dieselTitle{ color:#aaa; }
-.evTitle{ color:#2ecc71; }
-.rentalTitle{ color:#4da3ff; }
 
 /* GRID */
 .grid{
@@ -106,11 +96,11 @@ h2{
 .vin{
   font-size:13px;
   opacity:0.7;
-  margin-top:6px;
   word-break:break-all;
+  margin-top:6px;
 }
 
-/* TILE BUTTONS */
+/* BUTTONS */
 .btnRow{
   display:flex;
   gap:8px;
@@ -138,33 +128,20 @@ h2{
   padding:14px;
 }
 
-/* MODAL CARD (NEW LOOK) */
+/* MAIN MODAL */
 .modal{
   width:100%;
   max-width:420px;
-  height:88%;
-  background:rgba(26,29,36,0.95);
-  backdrop-filter: blur(14px);
+  height:90%;
+  background:#1a1d24;
   border-radius:22px;
   padding:18px;
   display:flex;
   flex-direction:column;
   gap:14px;
-  box-shadow:0 -10px 40px rgba(0,0,0,0.6);
-  animation: slideUp 0.25s ease-out;
 }
 
-@keyframes slideUp{
-  from{ transform:translateY(40px); opacity:0; }
-  to{ transform:translateY(0); opacity:1; }
-}
-
-.modal h3{
-  margin:0;
-  font-size:20px;
-}
-
-/* INPUT FIELDS */
+/* INPUTS */
 .field{
   display:flex;
   flex-direction:column;
@@ -183,7 +160,17 @@ input, select{
   background:#0f1115;
   color:white;
   font-size:16px;
-  outline:none;
+}
+
+/* SCAN BUTTON */
+.scanBtn{
+  margin-top:6px;
+  padding:12px;
+  border:none;
+  border-radius:12px;
+  background:#444;
+  color:white;
+  font-size:14px;
 }
 
 /* MODAL ACTIONS */
@@ -205,6 +192,13 @@ input, select{
 .saveM{ background:#1db954; }
 .cancelM{ background:#444; }
 
+/* SCAN MODAL */
+.scanVideo{
+  width:100%;
+  border-radius:14px;
+  background:black;
+}
+
 /* TOAST */
 .toast{
   position:fixed;
@@ -223,7 +217,6 @@ input, select{
 @media(max-width:420px){
   .grid{ grid-template-columns:1fr; }
 }
-
 </style>
 </head>
 
@@ -244,7 +237,7 @@ input, select{
 
 <div id="app"></div>
 
-<!-- MODAL -->
+<!-- MAIN MODAL -->
 <div class="modalBackdrop" id="modal">
 
   <div class="modal">
@@ -268,6 +261,8 @@ input, select{
     <div class="field">
       <label>VIN</label>
       <input id="vinInput"/>
+
+      <button class="scanBtn" onclick="startScan()">📷 Scan instead</button>
     </div>
 
     <div class="modalActions">
@@ -278,17 +273,41 @@ input, select{
   </div>
 </div>
 
+<!-- SCAN MODAL -->
+<div class="modalBackdrop" id="scanModal">
+
+  <div class="modal">
+
+    <h3>Scan VIN</h3>
+
+    <video id="video" class="scanVideo"></video>
+
+    <div class="field">
+      <label>Detected VIN</label>
+      <input id="scanResult"/>
+    </div>
+
+    <div class="modalActions">
+      <button class="saveM" onclick="confirmScan()">Confirm</button>
+      <button class="cancelM" onclick="closeScan()">Cancel</button>
+    </div>
+
+  </div>
+
+</div>
+
 <div id="toast" class="toast">Saved</div>
 
 <script>
 
 const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co"
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc
+"
 
 let data = { diesel:[], ev:[], rental:[] }
-
 let currentType = null
 let editIndex = null
+let stream = null
 
 const toastEl = document.getElementById("toast")
 
@@ -338,7 +357,7 @@ async function saveData(){
 }
 
 /* SEARCH */
-function getFiltered(type){
+function filtered(type){
   const q = document.getElementById("search").value.toLowerCase()
   return data[type].filter(v =>
     v.name.toLowerCase().includes(q)
@@ -375,6 +394,7 @@ function closeModal(){
   modal.style.display="none"
 }
 
+/* SAVE MODAL */
 function confirmModal(){
   const type = document.getElementById("typeInput").value
   const name = document.getElementById("nameInput").value
@@ -392,12 +412,13 @@ function confirmModal(){
   render()
 }
 
-/* ACTIONS */
-function deleteItem(type,i){
+/* DELETE */
+function del(type,i){
   data[type].splice(i,1)
   render()
 }
 
+/* COPY */
 async function copyVIN(vin){
   try{
     await navigator.clipboard.writeText(vin)
@@ -408,20 +429,17 @@ async function copyVIN(vin){
 }
 
 /* RENDER */
-function section(title,type,cls){
+function section(title,type){
 
-  const list = getFiltered(type)
+  const list = filtered(type)
 
   let html = `<div class="section">`
-
-  html += `<div class="sectionTitle ${cls}">${title}</div>`
-
+  html += `<div class="sectionTitle">${title} (${list.length})</div>`
   html += `<div class="grid">`
 
-  for(let i=0;i<list.length;i++){
+  for(let v of list){
 
-    const v = list[i]
-    const realIndex = data[type].indexOf(v)
+    const i = data[type].indexOf(v)
 
     html += `<div class="tile">
       <div>
@@ -431,22 +449,89 @@ function section(title,type,cls){
 
       <div class="btnRow">
         <button class="btn" onclick="copyVIN('${v.vin}')">Copy</button>
-        <button class="btn" onclick="openEdit('${type}',${realIndex})">Edit</button>
-        <button class="btn" onclick="deleteItem('${type}',${realIndex})">Del</button>
+        <button class="btn" onclick="openEdit('${type}',${i})">Edit</button>
+        <button class="btn" onclick="del('${type}',${i})">Del</button>
       </div>
     </div>`
   }
 
   html += `</div></div>`
-
   return html
 }
 
 function render(){
   document.getElementById("app").innerHTML =
-    section("Diesel","diesel","dieselTitle") +
-    section("EV","ev","evTitle") +
-    section("Rental","rental","rentalTitle")
+    section("Diesel","diesel") +
+    section("EV","ev") +
+    section("Rental","rental")
+}
+
+/* =========================
+   OCR / SCANNER
+========================= */
+
+async function startScan(){
+
+  document.getElementById("scanModal").style.display="flex"
+
+  const video = document.getElementById("video")
+  const result = document.getElementById("scanResult")
+
+  try{
+
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:"environment" }
+    })
+
+    video.srcObject = stream
+    await video.play()
+
+    const detector = new BarcodeDetector({
+      formats:["code_128","ean_13","qr_code","data_matrix"]
+    })
+
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")
+
+    function tick(){
+
+      if(!video.videoWidth){
+        requestAnimationFrame(tick)
+        return
+      }
+
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+
+      ctx.drawImage(video,0,0)
+
+      detector.detect(canvas).then(codes=>{
+        if(codes.length){
+          result.value = codes[0].rawValue
+          stream.getTracks().forEach(t=>t.stop())
+        }
+      }).catch(()=>{})
+
+      requestAnimationFrame(tick)
+    }
+
+    tick()
+
+  }catch(e){
+    alert("Camera blocked")
+  }
+}
+
+function confirmScan(){
+  document.getElementById("vinInput").value =
+    document.getElementById("scanResult").value
+
+  closeScan()
+}
+
+function closeScan(){
+  document.getElementById("scanModal").style.display="none"
+  if(stream) stream.getTracks().forEach(t=>t.stop())
 }
 
 /* START */
