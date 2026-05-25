@@ -141,6 +141,11 @@ h2{
   gap:14px;
 }
 
+.modal h3{
+  margin:0;
+  font-size:20px;
+}
+
 /* INPUTS */
 .field{
   display:flex;
@@ -293,7 +298,6 @@ input, select{
     </div>
 
   </div>
-
 </div>
 
 <div id="toast" class="toast">Saved</div>
@@ -301,10 +305,10 @@ input, select{
 <script>
 
 const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co"
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc
-"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc"
 
 let data = { diesel:[], ev:[], rental:[] }
+
 let currentType = null
 let editIndex = null
 let stream = null
@@ -317,8 +321,11 @@ function toast(msg){
   setTimeout(()=>toastEl.classList.remove("show"),1500)
 }
 
-/* LOAD */
+/* =========================
+   SAFE LOAD (NO CRASH)
+========================= */
 async function loadData(){
+
   try{
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`,
@@ -331,45 +338,74 @@ async function loadData(){
     )
 
     const json = await res.json()
-    if(json?.[0]?.data) data = json[0].data
 
-  }catch(e){}
+    if(Array.isArray(json) && json.length && json[0].data){
+      data = json[0].data
+    }
+
+  }catch(e){
+    console.log("Load failed:", e)
+  }
+
+  // ENSURE STRUCTURE NEVER BREAKS UI
+  data = {
+    diesel: data?.diesel || [],
+    ev: data?.ev || [],
+    rental: data?.rental || []
+  }
 
   render()
 }
 
-/* SAVE */
+/* =========================
+   SAVE
+========================= */
 async function saveData(){
-  await fetch(
-    `${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,
-    {
-      method:"PATCH",
-      headers:{
-        apikey:SUPABASE_KEY,
-        Authorization:`Bearer ${SUPABASE_KEY}`,
-        "Content-Type":"application/json"
-      },
-      body:JSON.stringify({data})
-    }
-  )
 
-  toast("Saved")
+  try{
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,
+      {
+        method:"PATCH",
+        headers:{
+          apikey:SUPABASE_KEY,
+          Authorization:`Bearer ${SUPABASE_KEY}`,
+          "Content-Type":"application/json"
+        },
+        body:JSON.stringify({data})
+      }
+    )
+
+    toast("Saved")
+
+  }catch(e){
+    toast("Save failed")
+  }
 }
 
-/* SEARCH */
+/* =========================
+   SAFE SEARCH
+========================= */
 function filtered(type){
-  const q = document.getElementById("search").value.toLowerCase()
-  return data[type].filter(v =>
-    v.name.toLowerCase().includes(q)
+
+  const q = (document.getElementById("search")?.value || "").toLowerCase()
+
+  const arr = data?.[type] || []
+
+  return arr.filter(v =>
+    (v?.name || "").toLowerCase().includes(q)
   )
 }
 
-/* MODAL */
+/* =========================
+   MODAL
+========================= */
 function openAdd(){
   currentType = null
   editIndex = null
 
   document.getElementById("modalTitle").innerText = "Add Vehicle"
+  document.getElementById("typeInput").value = "diesel"
   document.getElementById("nameInput").value = ""
   document.getElementById("vinInput").value = ""
 
@@ -380,12 +416,12 @@ function openEdit(type,i){
   currentType = type
   editIndex = i
 
-  const v = data[type][i]
+  const v = data?.[type]?.[i] || {}
 
   document.getElementById("modalTitle").innerText = "Edit Vehicle"
   document.getElementById("typeInput").value = type
-  document.getElementById("nameInput").value = v.name
-  document.getElementById("vinInput").value = v.vin
+  document.getElementById("nameInput").value = v.name || ""
+  document.getElementById("vinInput").value = v.vin || ""
 
   modal.style.display="flex"
 }
@@ -394,8 +430,11 @@ function closeModal(){
   modal.style.display="none"
 }
 
-/* SAVE MODAL */
+/* =========================
+   SAVE MODAL
+========================= */
 function confirmModal(){
+
   const type = document.getElementById("typeInput").value
   const name = document.getElementById("nameInput").value
   const vin = document.getElementById("vinInput").value
@@ -412,13 +451,17 @@ function confirmModal(){
   render()
 }
 
-/* DELETE */
+/* =========================
+   DELETE
+========================= */
 function del(type,i){
-  data[type].splice(i,1)
+  data?.[type]?.splice(i,1)
   render()
 }
 
-/* COPY */
+/* =========================
+   COPY
+========================= */
 async function copyVIN(vin){
   try{
     await navigator.clipboard.writeText(vin)
@@ -428,27 +471,29 @@ async function copyVIN(vin){
   }
 }
 
-/* RENDER */
+/* =========================
+   RENDER (SAFE)
+========================= */
 function section(title,type){
 
-  const list = filtered(type)
+  const list = filtered(type) || []
 
   let html = `<div class="section">`
   html += `<div class="sectionTitle">${title} (${list.length})</div>`
   html += `<div class="grid">`
 
-  for(let v of list){
+  for(const v of list){
 
-    const i = data[type].indexOf(v)
+    const i = data?.[type]?.indexOf(v)
 
     html += `<div class="tile">
       <div>
-        <div class="reg">${v.name}</div>
-        <div class="vin">${v.vin}</div>
+        <div class="reg">${v?.name || ""}</div>
+        <div class="vin">${v?.vin || ""}</div>
       </div>
 
       <div class="btnRow">
-        <button class="btn" onclick="copyVIN('${v.vin}')">Copy</button>
+        <button class="btn" onclick="copyVIN('${v?.vin || ""}')">Copy</button>
         <button class="btn" onclick="openEdit('${type}',${i})">Edit</button>
         <button class="btn" onclick="del('${type}',${i})">Del</button>
       </div>
@@ -460,16 +505,19 @@ function section(title,type){
 }
 
 function render(){
-  document.getElementById("app").innerHTML =
+
+  const app = document.getElementById("app")
+  if(!app) return
+
+  app.innerHTML =
     section("Diesel","diesel") +
     section("EV","ev") +
     section("Rental","rental")
 }
 
 /* =========================
-   OCR / SCANNER
+   SCANNER (SAFE + OPTIONAL)
 ========================= */
-
 async function startScan(){
 
   document.getElementById("scanModal").style.display="flex"
@@ -479,6 +527,11 @@ async function startScan(){
 
   try{
 
+    if(!navigator.mediaDevices){
+      alert("Camera not supported")
+      return
+    }
+
     stream = await navigator.mediaDevices.getUserMedia({
       video:{ facingMode:"environment" }
     })
@@ -486,9 +539,15 @@ async function startScan(){
     video.srcObject = stream
     await video.play()
 
-    const detector = new BarcodeDetector({
-      formats:["code_128","ean_13","qr_code","data_matrix"]
-    })
+    let detector = null
+
+    try{
+      if("BarcodeDetector" in window){
+        detector = new BarcodeDetector({
+          formats:["code_128","ean_13","qr_code","data_matrix"]
+        })
+      }
+    }catch(e){}
 
     const canvas = document.createElement("canvas")
     const ctx = canvas.getContext("2d")
@@ -505,12 +564,16 @@ async function startScan(){
 
       ctx.drawImage(video,0,0)
 
-      detector.detect(canvas).then(codes=>{
-        if(codes.length){
-          result.value = codes[0].rawValue
-          stream.getTracks().forEach(t=>t.stop())
-        }
-      }).catch(()=>{})
+      if(detector){
+        detector.detect(canvas)
+          .then(codes=>{
+            if(codes.length){
+              result.value = codes[0].rawValue
+              if(stream) stream.getTracks().forEach(t=>t.stop())
+            }
+          })
+          .catch(()=>{})
+      }
 
       requestAnimationFrame(tick)
     }
@@ -518,7 +581,7 @@ async function startScan(){
     tick()
 
   }catch(e){
-    alert("Camera blocked")
+    alert("Camera blocked or unsupported")
   }
 }
 
