@@ -181,11 +181,9 @@ const scanModalEl = () => document.getElementById("scanModal")
 /* ========================= */
 let data = { diesel:[], ev:[], rental:[] }
 
-let codeReader = null
 let stream = null
-
+let scanLoop = null
 let scanningActive = false
-let scanLocked = false
 
 let currentType = null
 let editIndex = null
@@ -199,18 +197,17 @@ function toast(msg){
 }
 
 /* =========================
-   CAMERA CONTROL (FINAL SAFE VERSION)
+   🔥 SAFE CAMERA STOP (NO ZOMBIE STATE)
 ========================= */
 function stopCamera(){
 
   scanningActive = false
-  scanLocked = true
 
   try{
 
-    if(codeReader){
-      try{ codeReader.reset() }catch(e){}
-      codeReader = null
+    if(scanLoop){
+      clearInterval(scanLoop)
+      scanLoop = null
     }
 
     if(stream){
@@ -226,8 +223,8 @@ function stopCamera(){
     if(video){
       try{
         video.pause()
-        video.removeAttribute("src")
         video.srcObject = null
+        video.removeAttribute("src")
         video.load()
       }catch(e){}
     }
@@ -284,6 +281,7 @@ async function saveData(){
     )
 
     toast("Saved")
+
   }catch(e){
     toast("Save failed")
   }
@@ -398,14 +396,12 @@ function render(){
 }
 
 /* =========================
-   SCANNER (CORRECT LIFECYCLE)
+   🔥 LIVE SCANNER (NO ZXING VIDEO OWNERSHIP)
 ========================= */
 async function startScan(){
 
   scanModalEl().style.display = "flex"
-
   scanningActive = true
-  scanLocked = false
 
   const video = document.getElementById("video")
   const result = document.getElementById("scanResult")
@@ -419,23 +415,41 @@ async function startScan(){
     video.srcObject = stream
     await video.play()
 
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")
+
     const { BrowserMultiFormatReader } = ZXingBrowser
-    codeReader = new BrowserMultiFormatReader()
+    const reader = new BrowserMultiFormatReader()
 
-    codeReader.decodeFromVideoDevice(
-      null,
-      video,
-      (res) => {
+    scanLoop = setInterval(async () => {
 
-        if(!scanningActive || scanLocked) return
+      if(!scanningActive) return
+      if(video.readyState < 2) return
+
+      try{
+
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+
+        ctx.drawImage(video,0,0,canvas.width,canvas.height)
+
+        const img = canvas.toDataURL("image/png")
+
+        const res = await reader.decodeFromImage(undefined, img)
 
         if(res){
-          scanLocked = true
-          result.value = res.getText()
+
+          scanningActive = false
+          result.value = res.text || res.getText?.()
+
           stopCamera()
         }
+
+      }catch(e){
+        // ignore decode misses (normal)
       }
-    )
+
+    }, 250)
 
   }catch(e){
     alert("Camera error")
