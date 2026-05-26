@@ -628,60 +628,53 @@ function render(){
 
 ========================= */
 
-async function startScan(){
+  async function startScan(){
 
   scanModalEl().style.display = "flex"
-
   scanningActive = true
 
   const video = document.getElementById("video")
-
   const result = document.getElementById("scanResult")
 
   try{
 
-    stream = await navigator.mediaDevices.getUserMedia({
-
+    const tempStream = await navigator.mediaDevices.getUserMedia({
       video:{ facingMode:"environment" }
-
     })
 
-    video.srcObject = stream
-
+    video.srcObject = tempStream
     await video.play()
 
+    // wait for a frame to fully render
+    await new Promise(r => setTimeout(r, 400))
+
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")
+
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    // 🔥 kill camera IMMEDIATELY after snapshot
+    tempStream.getTracks().forEach(t => t.stop())
+    video.srcObject = null
+
     const { BrowserMultiFormatReader } = ZXingBrowser
+    const reader = new BrowserMultiFormatReader()
 
-    codeReader = new BrowserMultiFormatReader()
+    const img = canvas.toDataURL("image/png")
 
-    codeReader.decodeFromVideoDevice(
+    const res = await reader.decodeFromImage(undefined, img)
 
-      null,
-
-      video,
-
-      (res) => {
-
-        if(!scanningActive) return
-
-        if(res){
-
-          result.value = res.getText()
-
-          stopCamera()
-
-        }
-
-      }
-
-    )
+    if(res){
+      result.value = res.getText()
+    }
 
   }catch(e){
-
-    alert("Camera error")
-
+    console.log(e)
+    alert("Scan failed")
   }
-
 }
 
 /* ========================= */
