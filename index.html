@@ -162,6 +162,8 @@ input,select{
 
     <div class="modalActions">
       <button class="saveM" onclick="confirmScan()">Confirm</button>
+
+<button class="btn" onclick="restartScan()">Rescan</button>
       <button class="cancelM" onclick="stopScan()">Cancel</button>
     </div>
 
@@ -364,6 +366,20 @@ async function copyVIN(vin){
 /* =========================
    🔥 HTML5 QR SCANNER (FIXED LIFECYCLE)
 ========================= */
+async function restartScan(){
+
+  const resultInput = document.getElementById("scanResult")
+  resultInput.value = ""
+
+  // fully stop current camera session
+  await stopCameraOnly()
+
+  // small delay helps iOS reallocate camera
+  setTimeout(() => {
+    startScan()
+  }, 250)
+}
+
 async function startScan(){
 
   document.getElementById("scanModal").style.display = "flex"
