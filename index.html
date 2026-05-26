@@ -1,227 +1,150 @@
 <!DOCTYPE html>
-
 <html>
-
 <head>
-
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-
 <title>Van VIN Manager</title>
 
 <script src="https://unpkg.com/@zxing/browser@latest"></script>
 
 <style>
-
 body{
-
   margin:0;
-
   font-family:-apple-system;
-
   background:#0f1115;
-
   color:white;
-
   padding:16px;
-
 }
 
 .header{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
-
 h2{margin:0;font-size:22px;}
 
 .topRow{display:flex;gap:10px;}
 
 .saveBtn,.addGlobal{
-
   flex:1;border:none;border-radius:14px;
-
   padding:14px;color:white;font-weight:700;font-size:16px;
-
 }
 
 .saveBtn{background:#1db954;}
-
 .addGlobal{background:#2684ff;}
 
 .search{
-
   width:100%;padding:14px;border-radius:14px;
-
   border:none;background:#1a1d24;color:white;font-size:16px;
-
 }
 
 .section{margin-bottom:18px;}
-
 .sectionTitle{display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin:10px 0;}
 
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
 
 .tile{
-
   background:#1a1d24;border-radius:16px;padding:14px;
-
   min-height:110px;display:flex;flex-direction:column;
-
   justify-content:space-between;
-
 }
 
 .reg{font-size:18px;font-weight:800;}
-
 .vin{font-size:13px;opacity:0.7;word-break:break-all;margin-top:6px;}
 
 .btnRow{display:flex;gap:8px;margin-top:10px;}
-
 .btn{flex:1;padding:10px;font-size:13px;border:none;border-radius:10px;background:#313846;color:white;}
 
 .modalBackdrop{
-
   position:fixed;inset:0;background:rgba(0,0,0,0.65);
-
   display:none;justify-content:center;align-items:flex-end;padding:14px;
-
 }
 
 .modal{
-
   width:100%;max-width:420px;height:90%;
-
   background:#1a1d24;border-radius:22px;padding:18px;
-
   display:flex;flex-direction:column;gap:14px;
-
 }
 
 .modal h3{margin:0;font-size:20px;}
 
 .field{display:flex;flex-direction:column;gap:6px;}
-
 label{font-size:13px;opacity:0.7;}
 
 input,select{
-
   padding:14px;border-radius:12px;border:none;
-
   background:#0f1115;color:white;font-size:16px;
-
 }
 
 .scanBtn{
-
   margin-top:6px;padding:12px;border:none;
-
   border-radius:12px;background:#444;color:white;
-
 }
 
 .modalActions{margin-top:auto;display:flex;gap:10px;}
-
 .modalActions button{flex:1;padding:14px;border:none;border-radius:14px;font-size:16px;color:white;}
-
 .saveM{background:#1db954;}
-
 .cancelM{background:#444;}
 
 .scanVideo{width:100%;border-radius:14px;background:black;}
 
 .toast{
-
   position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-
   background:#1db954;padding:12px 18px;border-radius:14px;
-
   opacity:0;transition:0.3s;
-
 }
-
 .show{opacity:1;}
 
 @media(max-width:420px){.grid{grid-template-columns:1fr;}}
-
 </style>
-
 </head>
 
 <body>
 
 <div class="header">
-
   <h2>Van VIN Manager</h2>
 
   <input class="search" id="search" placeholder="Search reg..." oninput="render()"/>
 
   <div class="topRow">
-
     <button class="addGlobal" onclick="openAdd()">+ Add Vehicle</button>
-
     <button class="saveBtn" onclick="saveData()">Save</button>
-
   </div>
-
 </div>
 
 <div id="app"></div>
 
 <!-- MODAL -->
-
 <div class="modalBackdrop" id="modal">
-
   <div class="modal">
 
     <h3 id="modalTitle">Add Vehicle</h3>
 
     <div class="field">
-
       <label>Category</label>
-
       <select id="typeInput">
-
         <option value="diesel">Diesel</option>
-
         <option value="ev">EV</option>
-
         <option value="rental">Rental</option>
-
       </select>
-
     </div>
 
     <div class="field">
-
       <label>Vehicle Reg</label>
-
       <input id="nameInput"/>
-
     </div>
 
     <div class="field">
-
       <label>VIN</label>
-
       <input id="vinInput"/>
-
       <button class="scanBtn" onclick="startScan()">📷 Scan instead</button>
-
     </div>
 
     <div class="modalActions">
-
       <button class="saveM" onclick="confirmModal()">Save</button>
-
       <button class="cancelM" onclick="closeModal()">Cancel</button>
-
     </div>
 
   </div>
-
 </div>
 
 <!-- SCAN MODAL -->
-
 <div class="modalBackdrop" id="scanModal">
-
   <div class="modal">
 
     <h3>Scan VIN</h3>
@@ -229,23 +152,16 @@ input,select{
     <video id="video" class="scanVideo" playsinline muted></video>
 
     <div class="field">
-
       <label>Detected VIN</label>
-
       <input id="scanResult"/>
-
     </div>
 
     <div class="modalActions">
-
       <button class="saveM" onclick="confirmScan()">Confirm</button>
-
       <button class="cancelM" onclick="closeScan()">Cancel</button>
-
     </div>
 
   </div>
-
 </div>
 
 <div id="toast" class="toast">Saved</div>
@@ -253,456 +169,296 @@ input,select{
 <script>
 
 /* =========================
-
-   SUPABASE (YOUR KEY INCLUDED)
-
+   SUPABASE
 ========================= */
-
 const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co"
-
-const SUPABASE_KEY =
-
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc"
 
 /* ========================= */
-
 const modalEl = () => document.getElementById("modal")
-
 const scanModalEl = () => document.getElementById("scanModal")
 
 /* ========================= */
-
 let data = { diesel:[], ev:[], rental:[] }
 
-let currentType = null
-
-let editIndex = null
-
 let codeReader = null
-
 let stream = null
 
 let scanningActive = false
+let scanLocked = false
+
+let currentType = null
+let editIndex = null
 
 /* ========================= */
-
 function toast(msg){
-
   const t = document.getElementById("toast")
-
   t.innerText = msg
-
   t.classList.add("show")
-
   setTimeout(()=>t.classList.remove("show"),1500)
-
 }
 
 /* =========================
-
-   🔥 NUCLEAR CAMERA STOP (iOS SAFE)
-
+   CAMERA CONTROL (FINAL SAFE VERSION)
 ========================= */
-
 function stopCamera(){
 
   scanningActive = false
+  scanLocked = true
 
   try{
 
     if(codeReader){
-
       try{ codeReader.reset() }catch(e){}
-
       codeReader = null
-
     }
 
     if(stream){
-
-      stream.getTracks().forEach(track => {
-
-        track.stop()
-
-        track.enabled = false
-
+      stream.getTracks().forEach(t => {
+        t.stop()
+        t.enabled = false
       })
-
       stream = null
-
     }
 
-    const oldVideo = document.getElementById("video")
+    const video = document.getElementById("video")
 
-    if(oldVideo){
-
+    if(video){
       try{
-
-        oldVideo.pause()
-
-        oldVideo.removeAttribute("src")
-
-        oldVideo.srcObject = null
-
-        oldVideo.load()
-
+        video.pause()
+        video.removeAttribute("src")
+        video.srcObject = null
+        video.load()
       }catch(e){}
-
-      // 🔥 BREAK SAFARI MEDIA LINK COMPLETELY
-
-      const newVideo = oldVideo.cloneNode(false)
-
-      oldVideo.parentNode.replaceChild(newVideo, oldVideo)
-
     }
 
   }catch(e){
-
     console.log(e)
-
   }
-
 }
 
 /* ========================= */
-
 async function loadData(){
-
   try{
-
     const res = await fetch(
-
       `${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`,
-
       {
-
         headers:{
-
           apikey:SUPABASE_KEY,
-
           Authorization:`Bearer ${SUPABASE_KEY}`
-
         }
-
       }
-
     )
 
     const json = await res.json()
 
     if(Array.isArray(json) && json.length && json[0].data){
-
       data = json[0].data
-
     }
 
   }catch(e){}
 
   data = {
-
     diesel: data?.diesel || [],
-
     ev: data?.ev || [],
-
     rental: data?.rental || []
-
   }
 
   render()
-
 }
 
 /* ========================= */
-
 async function saveData(){
-
   try{
-
     await fetch(
-
       `${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,
-
       {
-
         method:"PATCH",
-
         headers:{
-
           apikey:SUPABASE_KEY,
-
           Authorization:`Bearer ${SUPABASE_KEY}`,
-
           "Content-Type":"application/json"
-
         },
-
         body:JSON.stringify({data})
-
       }
-
     )
 
     toast("Saved")
-
   }catch(e){
-
     toast("Save failed")
-
   }
-
 }
 
 /* ========================= */
-
 function filtered(type){
-
   const q = (document.getElementById("search")?.value || "").toLowerCase()
-
   return (data[type] || []).filter(v =>
-
     (v.name || "").toLowerCase().includes(q)
-
   )
-
 }
 
 /* ========================= */
-
 function openAdd(){
-
   currentType = null
-
   editIndex = null
 
   document.getElementById("modalTitle").innerText = "Add Vehicle"
-
   document.getElementById("typeInput").value = "diesel"
-
   document.getElementById("nameInput").value = ""
-
   document.getElementById("vinInput").value = ""
 
   modalEl().style.display = "flex"
-
 }
 
 function closeModal(){
-
   modalEl().style.display = "none"
-
 }
 
 /* ========================= */
-
 function confirmModal(){
-
   const type = document.getElementById("typeInput").value
-
   const name = document.getElementById("nameInput").value
-
   const vin = document.getElementById("vinInput").value
 
   if(!name || !vin) return
 
   if(editIndex === null){
-
     data[type].push({name,vin})
-
   }else{
-
     data[currentType][editIndex] = {name,vin}
-
   }
 
   closeModal()
-
   render()
-
 }
 
 /* ========================= */
-
 function openEdit(type,i){
-
   currentType = type
-
   editIndex = i
 
   const v = data[type][i]
 
   document.getElementById("modalTitle").innerText = "Edit Vehicle"
-
   document.getElementById("typeInput").value = type
-
   document.getElementById("nameInput").value = v.name
-
   document.getElementById("vinInput").value = v.vin
 
   modalEl().style.display = "flex"
-
 }
 
 /* ========================= */
-
 function del(type,i){
-
   data[type].splice(i,1)
-
   render()
-
 }
 
 async function copyVIN(vin){
-
   await navigator.clipboard.writeText(vin)
-
   toast("Copied")
-
 }
 
 /* ========================= */
-
 function section(title,type){
 
   const list = filtered(type)
 
   let html = `<div class="section">`
-
   html += `<div class="sectionTitle">${title} (${list.length})</div>`
-
   html += `<div class="grid">`
 
   for(const v of list){
-
     const i = data[type].indexOf(v)
 
     html += `
-
     <div class="tile">
-
       <div>
-
         <div class="reg">${v.name}</div>
-
         <div class="vin">${v.vin}</div>
-
       </div>
 
       <div class="btnRow">
-
         <button class="btn" onclick="copyVIN('${v.vin}')">Copy</button>
-
         <button class="btn" onclick="openEdit('${type}',${i})">Edit</button>
-
         <button class="btn" onclick="del('${type}',${i})">Del</button>
-
       </div>
-
     </div>`
-
   }
 
   html += `</div></div>`
-
   return html
-
 }
 
 /* ========================= */
-
 function render(){
-
   document.getElementById("app").innerHTML =
-
     section("Diesel","diesel") +
-
     section("EV","ev") +
-
     section("Rental","rental")
-
 }
 
 /* =========================
-
-   SCANNER (FINAL SAFE VERSION)
-
+   SCANNER (CORRECT LIFECYCLE)
 ========================= */
-
-  async function startScan(){
+async function startScan(){
 
   scanModalEl().style.display = "flex"
+
   scanningActive = true
+  scanLocked = false
 
   const video = document.getElementById("video")
   const result = document.getElementById("scanResult")
 
   try{
 
-    const tempStream = await navigator.mediaDevices.getUserMedia({
+    stream = await navigator.mediaDevices.getUserMedia({
       video:{ facingMode:"environment" }
     })
 
-    video.srcObject = tempStream
+    video.srcObject = stream
     await video.play()
 
-    // wait for a frame to fully render
-    await new Promise(r => setTimeout(r, 400))
-
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")
-
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    // 🔥 kill camera IMMEDIATELY after snapshot
-    tempStream.getTracks().forEach(t => t.stop())
-    video.srcObject = null
-
     const { BrowserMultiFormatReader } = ZXingBrowser
-    const reader = new BrowserMultiFormatReader()
+    codeReader = new BrowserMultiFormatReader()
 
-    const img = canvas.toDataURL("image/png")
+    codeReader.decodeFromVideoDevice(
+      null,
+      video,
+      (res) => {
 
-    const res = await reader.decodeFromImage(undefined, img)
+        if(!scanningActive || scanLocked) return
 
-    if(res){
-      result.value = res.getText()
-    }
+        if(res){
+          scanLocked = true
+          result.value = res.getText()
+          stopCamera()
+        }
+      }
+    )
 
   }catch(e){
-    console.log(e)
-    alert("Scan failed")
+    alert("Camera error")
   }
 }
 
 /* ========================= */
-
 function confirmScan(){
-
   document.getElementById("vinInput").value =
-
     document.getElementById("scanResult").value
 
   closeScan()
-
 }
 
 function closeScan(){
-
   scanModalEl().style.display = "none"
-
   stopCamera()
-
 }
 
 /* ========================= */
-
 loadData()
 
 </script>
 
 </body>
-
 </html>
