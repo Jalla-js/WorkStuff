@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
 <title>Van VIN Manager</title>
 
-<script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
 body{
@@ -81,7 +81,11 @@ input,select{
 .saveM{background:#1db954;}
 .cancelM{background:#444;}
 
-.scanVideo{width:100%;border-radius:14px;background:black;}
+#reader{
+  width:100%;
+  border-radius:14px;
+  overflow:hidden;
+}
 
 .toast{
   position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
@@ -149,7 +153,7 @@ input,select{
 
     <h3>Scan VIN</h3>
 
-    <video id="video" class="scanVideo" playsinline muted></video>
+    <div id="reader"></div>
 
     <div class="field">
       <label>Detected VIN</label>
@@ -175,18 +179,12 @@ const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co"
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc"
 
 /* ========================= */
-const modalEl = () => document.getElementById("modal")
-const scanModalEl = () => document.getElementById("scanModal")
-
-/* ========================= */
 let data = { diesel:[], ev:[], rental:[] }
-
-let stream = null
-let scanLoop = null
-let scanningActive = false
 
 let currentType = null
 let editIndex = null
+
+let html5Scanner = null
 
 /* ========================= */
 function toast(msg){
@@ -194,44 +192,6 @@ function toast(msg){
   t.innerText = msg
   t.classList.add("show")
   setTimeout(()=>t.classList.remove("show"),1500)
-}
-
-/* =========================
-   🔥 SAFE CAMERA STOP (NO ZOMBIE STATE)
-========================= */
-function stopCamera(){
-
-  scanningActive = false
-
-  try{
-
-    if(scanLoop){
-      clearInterval(scanLoop)
-      scanLoop = null
-    }
-
-    if(stream){
-      stream.getTracks().forEach(t => {
-        t.stop()
-        t.enabled = false
-      })
-      stream = null
-    }
-
-    const video = document.getElementById("video")
-
-    if(video){
-      try{
-        video.pause()
-        video.srcObject = null
-        video.removeAttribute("src")
-        video.load()
-      }catch(e){}
-    }
-
-  }catch(e){
-    console.log(e)
-  }
 }
 
 /* ========================= */
@@ -305,11 +265,11 @@ function openAdd(){
   document.getElementById("nameInput").value = ""
   document.getElementById("vinInput").value = ""
 
-  modalEl().style.display = "flex"
+  document.getElementById("modal").style.display = "flex"
 }
 
 function closeModal(){
-  modalEl().style.display = "none"
+  document.getElementById("modal").style.display = "none"
 }
 
 /* ========================= */
@@ -342,7 +302,7 @@ function openEdit(type,i){
   document.getElementById("nameInput").value = v.name
   document.getElementById("vinInput").value = v.vin
 
-  modalEl().style.display = "flex"
+  document.getElementById("modal").style.display = "flex"
 }
 
 /* ========================= */
@@ -396,64 +356,74 @@ function render(){
 }
 
 /* =========================
-   🔥 LIVE SCANNER (NO ZXING VIDEO OWNERSHIP)
+   🔥 HTML5 QR SCANNER (FIXED iOS LIFECYCLE)
 ========================= */
 async function startScan(){
 
-  scanModalEl().style.display = "flex"
-  scanningActive = true
+  document.getElementById("scanModal").style.display = "flex"
 
-  const video = document.getElementById("video")
-  const result = document.getElementById("scanResult")
+  const resultInput = document.getElementById("scanResult")
+
+  // clean previous instance
+  if(html5Scanner){
+    try{
+      await html5Scanner.stop()
+      await html5Scanner.clear()
+    }catch(e){}
+    html5Scanner = null
+  }
+
+  html5Scanner = new Html5Qrcode("reader")
+
+  const config = {
+    fps: 10,
+    qrbox: { width: 250, height: 150 },
+    rememberLastUsedCamera: true
+  }
 
   try{
 
-    stream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:"environment" }
-    })
+    const cameras = await Html5Qrcode.getCameras()
 
-    video.srcObject = stream
-    await video.play()
+    const cameraId =
+      cameras?.find(c => c.label.toLowerCase().includes("back"))?.id
+      || cameras?.[0]?.id
 
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")
+    await html5Scanner.start(
+      cameraId,
+      config,
+      (decodedText) => {
 
-    const { BrowserMultiFormatReader } = ZXingBrowser
-    const reader = new BrowserMultiFormatReader()
+        // SUCCESS
+        resultInput.value = decodedText
 
-    scanLoop = setInterval(async () => {
+        stopScan()
 
-      if(!scanningActive) return
-      if(video.readyState < 2) return
-
-      try{
-
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-
-        ctx.drawImage(video,0,0,canvas.width,canvas.height)
-
-        const img = canvas.toDataURL("image/png")
-
-        const res = await reader.decodeFromImage(undefined, img)
-
-        if(res){
-
-          scanningActive = false
-          result.value = res.text || res.getText?.()
-
-          stopCamera()
-        }
-
-      }catch(e){
-        // ignore decode misses (normal)
+      },
+      (error) => {
+        // ignore scan errors (normal)
       }
-
-    }, 250)
+    )
 
   }catch(e){
     alert("Camera error")
   }
+}
+
+/* =========================
+   🔥 CLEAN STOP (IMPORTANT FOR iOS)
+========================= */
+async function stopScan(){
+
+  try{
+    if(html5Scanner){
+      await html5Scanner.stop()
+      await html5Scanner.clear()
+      html5Scanner = null
+    }
+  }catch(e){}
+
+  document.getElementById("scanModal").style.display = "none"
 }
 
 /* ========================= */
@@ -461,12 +431,7 @@ function confirmScan(){
   document.getElementById("vinInput").value =
     document.getElementById("scanResult").value
 
-  closeScan()
-}
-
-function closeScan(){
-  scanModalEl().style.display = "none"
-  stopCamera()
+  stopScan()
 }
 
 /* ========================= */
