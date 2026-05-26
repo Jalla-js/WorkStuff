@@ -157,12 +157,12 @@ input,select{
 
     <div class="field">
       <label>Detected VIN</label>
-      <input id="scanResult"/>
+      <input id="scanResult" placeholder="Waiting for scan..."/>
     </div>
 
     <div class="modalActions">
       <button class="saveM" onclick="confirmScan()">Confirm</button>
-      <button class="cancelM" onclick="closeScan()">Cancel</button>
+      <button class="cancelM" onclick="stopScan()">Cancel</button>
     </div>
 
   </div>
@@ -192,6 +192,13 @@ function toast(msg){
   t.innerText = msg
   t.classList.add("show")
   setTimeout(()=>t.classList.remove("show"),1500)
+}
+
+/* ========================= */
+function vibrateSuccess(){
+  if(navigator.vibrate){
+    navigator.vibrate([80, 40, 120])
+  }
 }
 
 /* ========================= */
@@ -291,32 +298,6 @@ function confirmModal(){
 }
 
 /* ========================= */
-function openEdit(type,i){
-  currentType = type
-  editIndex = i
-
-  const v = data[type][i]
-
-  document.getElementById("modalTitle").innerText = "Edit Vehicle"
-  document.getElementById("typeInput").value = type
-  document.getElementById("nameInput").value = v.name
-  document.getElementById("vinInput").value = v.vin
-
-  document.getElementById("modal").style.display = "flex"
-}
-
-/* ========================= */
-function del(type,i){
-  data[type].splice(i,1)
-  render()
-}
-
-async function copyVIN(vin){
-  await navigator.clipboard.writeText(vin)
-  toast("Copied")
-}
-
-/* ========================= */
 function section(title,type){
 
   const list = filtered(type)
@@ -355,16 +336,41 @@ function render(){
     section("Rental","rental")
 }
 
+/* ========================= */
+function openEdit(type,i){
+  currentType = type
+  editIndex = i
+
+  const v = data[type][i]
+
+  document.getElementById("modalTitle").innerText = "Edit Vehicle"
+  document.getElementById("typeInput").value = type
+  document.getElementById("nameInput").value = v.name
+  document.getElementById("vinInput").value = v.vin
+
+  document.getElementById("modal").style.display = "flex"
+}
+
+function del(type,i){
+  data[type].splice(i,1)
+  render()
+}
+
+async function copyVIN(vin){
+  await navigator.clipboard.writeText(vin)
+  toast("Copied")
+}
+
 /* =========================
-   🔥 HTML5 QR SCANNER (FIXED iOS LIFECYCLE)
+   🔥 HTML5 QR SCANNER (FIXED LIFECYCLE)
 ========================= */
 async function startScan(){
 
   document.getElementById("scanModal").style.display = "flex"
 
   const resultInput = document.getElementById("scanResult")
+  resultInput.value = ""
 
-  // clean previous instance
   if(html5Scanner){
     try{
       await html5Scanner.stop()
@@ -377,8 +383,7 @@ async function startScan(){
 
   const config = {
     fps: 10,
-    qrbox: { width: 250, height: 150 },
-    rememberLastUsedCamera: true
+    qrbox: { width: 250, height: 150 }
   }
 
   try{
@@ -397,12 +402,13 @@ async function startScan(){
         // SUCCESS
         resultInput.value = decodedText
 
-        stopScan()
+        vibrateSuccess()
+        toast("VIN detected")
+
+        stopCameraOnly()
 
       },
-      (error) => {
-        // ignore scan errors (normal)
-      }
+      () => {}
     )
 
   }catch(e){
@@ -410,10 +416,8 @@ async function startScan(){
   }
 }
 
-/* =========================
-   🔥 CLEAN STOP (IMPORTANT FOR iOS)
-========================= */
-async function stopScan(){
+/* ========================= */
+async function stopCameraOnly(){
 
   try{
     if(html5Scanner){
@@ -423,6 +427,14 @@ async function stopScan(){
     }
   }catch(e){}
 
+  const reader = document.getElementById("reader")
+  if(reader) reader.innerHTML = ""
+}
+
+/* ========================= */
+function stopScan(){
+
+  stopCameraOnly()
   document.getElementById("scanModal").style.display = "none"
 }
 
