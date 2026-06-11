@@ -34,6 +34,7 @@ h2{margin:0;font-size:22px;}
   background:#1a1d24;
   color:white;
   margin-top:10px;
+  box-sizing:border-box;
 }
 
 .stats{
@@ -138,6 +139,7 @@ input,select{
   border:none;
   background:#0f1115;
   color:white;
+  box-sizing:border-box;
 }
 
 .modalActions{
@@ -167,8 +169,19 @@ input,select{
   border-radius:14px;
   opacity:0;
   transition:0.3s;
+  pointer-events:none;
 }
+
 .show{opacity:1;}
+
+pre#errorBox{
+  white-space:pre-wrap;
+  background:#2a1010;
+  color:#ffb3b3;
+  padding:12px;
+  border-radius:12px;
+  display:none;
+}
 </style>
 </head>
 
@@ -185,6 +198,8 @@ input,select{
 
   <div id="warning"></div>
 
+  <pre id="errorBox"></pre>
+
   <button onclick="openAdd()" style="margin-top:10px;width:100%;padding:14px;border:none;border-radius:14px;background:#2684ff;color:white;font-weight:700;">
     + Add Vehicle
   </button>
@@ -196,10 +211,8 @@ input,select{
 
 <div id="app"></div>
 
-<!-- MODAL -->
 <div class="modalBackdrop" id="modal">
   <div class="modal">
-
     <h3>Add Vehicle</h3>
 
     <select id="typeInput">
@@ -216,290 +229,282 @@ input,select{
       <button class="saveM" onclick="confirmModal()">Save</button>
       <button class="cancelM" onclick="closeModal()">Cancel</button>
     </div>
-
   </div>
 </div>
 
 <div id="toast" class="toast">Saved</div>
 
 <script>
-/* =========================
-   OFFLINE FIRST STORAGE
-========================= */
-
-const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co"
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc"
+const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc";
 
 let data = {
-  diesel:[],
-  ev:[],
-  rental:[],
-  unknown:[]
+  diesel: [],
+  ev: [],
+  rental: [],
+  unknown: []
+};
+
+let online = navigator.onLine;
+
+function showError(msg){
+  const box = document.getElementById("errorBox");
+  box.style.display = "block";
+  box.textContent = msg;
 }
 
-let online = navigator.onLine
+function clearError(){
+  const box = document.getElementById("errorBox");
+  box.style.display = "none";
+  box.textContent = "";
+}
 
-window.addEventListener("online", ()=>{ online=true; syncStatus() })
-window.addEventListener("offline", ()=>{ online=false; syncStatus() })
+window.addEventListener("online", ()=>{
+  online = true;
+  syncStatus();
+  loadData();
+});
+
+window.addEventListener("offline", ()=>{
+  online = false;
+  syncStatus();
+});
 
 function syncStatus(){
-  document.getElementById("offline").style.display = online ? "none" : "block"
+  document.getElementById("offline").style.display = online ? "none" : "block";
 }
 
-/* =========================
-   LOAD
-========================= */
+function normaliseData(obj){
+  if (!obj || typeof obj !== "object") return { diesel:[], ev:[], rental:[], unknown:[] };
+  return {
+    diesel: Array.isArray(obj.diesel) ? obj.diesel : [],
+    ev: Array.isArray(obj.ev) ? obj.ev : [],
+    rental: Array.isArray(obj.rental) ? obj.rental : [],
+    unknown: Array.isArray(obj.unknown) ? obj.unknown : []
+  };
+}
+
+function extractData(payload){
+  if (!payload) return null;
+
+  if (Array.isArray(payload)){
+    for (const item of payload){
+      const found = extractData(item);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (payload.data){
+    const nested = extractData(payload.data);
+    if (nested) return nested;
+  }
+
+  if (payload.diesel || payload.ev || payload.rental || payload.unknown){
+    return normaliseData(payload);
+  }
+
+  return null;
+}
 
 async function loadData(){
+  clearError();
 
-  const local = localStorage.getItem("vin_data")
+  try{
+    const local = localStorage.getItem("vin_data");
+    if (local){
+      try{
+        data = normaliseData(JSON.parse(local));
+      }catch(e){}
+    }
 
-  if(local){
-    data = JSON.parse(local)
-  }
-
-  if(online){
-    try{
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`,{
-        headers:{
-          apikey:SUPABASE_KEY,
-          Authorization:`Bearer ${SUPABASE_KEY}`
+    if (online){
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`, {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`
         }
-      })
+      });
 
-      const json = await res.json()
+      if (!res.ok) throw new Error(await res.text());
 
-      if(json?.[0]?.data){
-        data = json[0].data
-        saveLocal()
+      const json = await res.json();
+      const extracted = extractData(json);
+
+      if (extracted){
+        data = extracted;
+        saveLocal();
       }
+    }
 
-    }catch(e){}
+    render();
+  }catch(e){
+    showError(`Load error: ${e.message}`);
+    render();
   }
-
-  render()
 }
-
-/* =========================
-   SAVE LOCAL
-========================= */
 
 function saveLocal(){
-  localStorage.setItem("vin_data", JSON.stringify(data))
+  localStorage.setItem("vin_data", JSON.stringify(data));
 }
 
-/* =========================
-   SYNC
-========================= */
-
 async function saveData(){
+  saveLocal();
 
-  saveLocal()
-
-  if(!online){
-    toast("Saved offline")
-    return
+  if (!online){
+    toast("Saved offline");
+    return;
   }
 
   try{
-    await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,{
-      method:"PATCH",
-      headers:{
-        apikey:SUPABASE_KEY,
-        Authorization:`Bearer ${SUPABASE_KEY}`,
-        "Content-Type":"application/json"
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal"
       },
-      body:JSON.stringify({data})
-    })
+      body: JSON.stringify({ data })
+    });
 
-    toast("Synced")
+    if (!res.ok) throw new Error(await res.text());
 
+    toast("Synced");
   }catch(e){
-    toast("Sync failed")
+    toast("Sync failed");
+    showError(`Sync error: ${e.message}`);
   }
 }
 
-/* =========================
-   DUPLICATES
-========================= */
-
 function getDuplicates(){
-  const seen={}
-  const dup=[]
+  const seen = new Set();
+  const dup = new Set();
 
-  for(const t of Object.keys(data)){
-    for(const v of data[t]){
-      if(seen[v.vin]) dup.push(v.vin)
-      else seen[v.vin]=true
+  for (const t of Object.keys(data)){
+    for (const v of (data[t] || [])){
+      if (seen.has(v.vin)) dup.add(v.vin);
+      else seen.add(v.vin);
     }
   }
 
-  return [...new Set(dup)]
+  return [...dup];
 }
-
-/* =========================
-   FILTER
-========================= */
 
 function filtered(list){
-  const q=document.getElementById("search").value.toLowerCase()
-  return list.filter(v =>
-    (v.name||"").toLowerCase().includes(q) ||
-    (v.vin||"").toLowerCase().includes(q)
-  )
+  const q = document.getElementById("search").value.toLowerCase().trim();
+  return (list || []).filter(v =>
+    ((v.name || "").toLowerCase().includes(q) || (v.vin || "").toLowerCase().includes(q))
+  );
 }
 
-/* =========================
-   SECTION
-========================= */
+function escapeHtml(s){
+  return String(s).replace(/[&<>'"]/g, m => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    "'":"&#39;",
+    "\"":"&quot;"
+  }[m]));
+}
 
-function section(title,type){
+function section(title, type){
+  const list = filtered(data[type] || []);
+  let html = `<div style="margin-top:18px"><div style="font-weight:700;margin-bottom:10px">${title} (${list.length})</div><div class="grid">`;
 
-  const list = filtered(data[type]||[])
-
-  let html = `<div style="margin-top:18px">
-  <div style="font-weight:700;margin-bottom:10px">${title} (${list.length})</div>
-  <div class="grid">`
-
-  for(const v of list){
-
-    html+=`
+  for (const v of list){
+    html += `
     <div class="tile">
       <div>
-        <div class="reg">${v.name}</div>
-        <div class="vin">${v.vin}</div>
+        <div class="reg">${escapeHtml(v.name)}</div>
+        <div class="vin">${escapeHtml(v.vin)}</div>
         <div class="tag ${type}">${type}</div>
       </div>
-
       <div class="btnRow">
-        <button class="btn" onclick="copy('${v.vin}')">VIN</button>
-        <button class="btn" onclick="copy('${v.name}')">REG</button>
+        <button class="btn" onclick="copy(${JSON.stringify(v.vin)})">VIN</button>
+        <button class="btn" onclick="copy(${JSON.stringify(v.name)})">REG</button>
       </div>
-    </div>`
+    </div>`;
   }
 
-  html+="</div></div>"
-  return html
+  html += "</div></div>";
+  return html;
 }
 
-/* =========================
-   RENDER
-========================= */
-
 function render(){
+  data = normaliseData(data);
 
-  const stats = `
+  document.getElementById("stats").innerHTML = `
     <span class="badge">D ${data.diesel.length}</span>
     <span class="badge">E ${data.ev.length}</span>
     <span class="badge">R ${data.rental.length}</span>
-    <span class="badge">U ${data.unknown.length}</span>
-  `
+    <span class="badge">U ${data.unknown.length}</span>`;
 
-  document.getElementById("stats").innerHTML = stats
-
-  const dup = getDuplicates()
-  document.getElementById("warning").innerHTML =
-    dup.length ? `<div class="warn">⚠ ${dup.length} duplicate VINs detected</div>` : ""
+  const dup = getDuplicates();
+  document.getElementById("warning").innerHTML = dup.length
+    ? `<div class="warn">⚠ ${dup.length} duplicate VINs detected</div>`
+    : "";
 
   document.getElementById("app").innerHTML =
-    section("Diesel","diesel") +
-    section("EV","ev") +
-    section("Rental","rental") +
-    section("Unknown","unknown")
+    section("Diesel", "diesel") +
+    section("EV", "ev") +
+    section("Rental", "rental") +
+    section("Unknown", "unknown");
 }
-
-/* =========================
-   COPY
-========================= */
 
 async function copy(t){
-  await navigator.clipboard.writeText(t)
-  toast("Copied")
+  try{
+    await navigator.clipboard.writeText(t);
+    toast("Copied");
+  }catch(e){
+    toast("Copy failed");
+  }
 }
 
-/* =========================
-   MODAL
-========================= */
-
 function openAdd(){
-  document.getElementById("modal").style.display="flex"
+  document.getElementById("modal").style.display = "flex";
 }
 
 function closeModal(){
-  document.getElementById("modal").style.display="none"
+  document.getElementById("modal").style.display = "none";
 }
 
 function confirmModal(){
+  const type = document.getElementById("typeInput").value;
+  const name = document.getElementById("nameInput").value.trim();
+  const vin = document.getElementById("vinInput").value.trim();
 
-  const type=document.getElementById("typeInput").value
-  const name=document.getElementById("nameInput").value
-  const vin=document.getElementById("vinInput").value
+  if (!name || !vin) return;
 
-  if(!name||!vin) return
+  data[type] = Array.isArray(data[type]) ? data[type] : [];
+  data[type].push({ name, vin });
 
-  data[type].push({name,vin})
-
-  saveLocal()
-  closeModal()
-  render()
+  saveLocal();
+  closeModal();
+  render();
 }
-
-/* =========================
-   TOAST
-========================= */
 
 function toast(msg){
-  const t=document.getElementById("toast")
-  t.innerText=msg
-  t.classList.add("show")
-  setTimeout(()=>t.classList.remove("show"),1200)
+  const t = document.getElementById("toast");
+  t.innerText = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1200);
 }
 
-/* =========================
-   INIT
-========================= */
-
-syncStatus()
-loadData()
-
-/* =========================
-   PWA MANIFEST + SW
-========================= */
+syncStatus();
+loadData();
 
 const manifest = {
-  name:"Van VIN Manager",
-  short_name:"VIN Manager",
-  start_url:".",
-  display:"standalone",
-  background_color:"#0f1115",
-  theme_color:"#0f1115"
-}
+  name: "Van VIN Manager",
+  short_name: "VIN Manager",
+  start_url: ".",
+  display: "standalone",
+  background_color: "#0f1115",
+  theme_color: "#0f1115"
+};
 
-const blob = new Blob([JSON.stringify(manifest)],{type:"application/json"})
-document.getElementById("manifestPlace").href = URL.createObjectURL(blob)
-
-if("serviceWorker" in navigator){
-
-  const sw = `
-  self.addEventListener('install', e=>{
-    e.waitUntil(
-      caches.open('vin-cache').then(cache=>{
-        return cache.addAll(['./'])
-      })
-    )
-  })
-
-  self.addEventListener('fetch', e=>{
-    e.respondWith(
-      caches.match(e.request).then(r=>r||fetch(e.request))
-    )
-  })
-  `
-
-  const swBlob = new Blob([sw],{type:"text/javascript"})
-  navigator.serviceWorker.register(URL.createObjectURL(swBlob))
-}
-
+const blob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+document.getElementById("manifestPlace").href = URL.createObjectURL(blob);
 </script>
 
 </body>
