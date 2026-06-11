@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>Van VIN Manager PWA</title>
+<link rel="manifest" id="manifestPlace">
+<style>
+:root{--bg:#0b0d12;--bg2:#0f1115;--card2:#1a1d24;--text:#fff;--blue:#2684ff;--green:#1db954;--purple:#9c27b0;--orange:#ff9800;--red:#ff3b30}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);padding:16px}button,input,select{font:inherit}
+.header{position:sticky;top:0;background:rgba(15,17,21,.94);backdrop-filter:blur(12px);z-index:10;padding-bottom:12px}h2{margin:0;font-size:22px}
+.search,.modal input,.modal select{width:100%;padding:14px;border-radius:14px;border:none;background:var(--card2);color:var(--text)}.search{margin-top:10px}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:12px}.badge{padding:6px 10px;background:var(--card2);border-radius:999px}
+.warn{background:var(--orange);color:#111;padding:10px;border-radius:12px;margin-top:10px;font-weight:700;cursor:pointer}.offline,.errorBox{padding:10px;border-radius:12px;margin-top:10px;display:none}.offline{background:var(--red)}.errorBox{background:#4a1717;color:#ffd4d4;white-space:pre-wrap}
+.section{margin-top:18px}.sectionTitle{font-weight:700;margin-bottom:10px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tile{background:var(--card2);padding:14px;border-radius:16px;min-height:144px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;min-width:0}
+.reg{font-weight:800}.vin{font-size:12px;opacity:.75;word-break:break-all;margin-top:6px}.tag{font-size:11px;padding:3px 8px;border-radius:999px;display:inline-block;margin-top:6px}.ev{background:var(--blue)}.diesel{background:var(--green)}.rental{background:var(--purple)}.unknown{background:var(--orange);color:#111}
+.btnRow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.btn{padding:9px;font-size:12px;border:none;border-radius:10px;background:#313846;color:white;min-width:0}.btn.secondary{background:#3c4557}
+.primaryAction{margin-top:10px;width:100%;padding:14px;border:none;border-radius:14px;color:white;font-weight:700}.blue{background:var(--blue)}.green{background:var(--green)}
+.modalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;justify-content:center;align-items:flex-end;padding:14px;z-index:30}.modal{width:100%;max-width:420px;max-height:85vh;overflow:auto;background:var(--card2);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.modalActions{display:flex;gap:10px;margin-top:4px}.modalActions button{flex:1;padding:14px;border:none;border-radius:14px;color:white}.saveM{background:var(--green)}.cancelM{background:#444}.deleteM{background:#792828}.confirmDelete{background:#8e2d2d}.ghostBtn{background:#444}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:10px 14px;border-radius:14px;opacity:0;transition:.3s;pointer-events:none;z-index:40}.show{opacity:1}
+.dupList{display:flex;flex-direction:column;gap:10px;margin-top:4px}.dupItem{background:#11151c;border-radius:14px;padding:12px}.dupVin{font-size:12px;opacity:.8;word-break:break-all;margin-top:4px}.dupEntries{display:flex;flex-direction:column;gap:8px;margin-top:10px}.dupEntry{background:#0d1117;border:1px solid #222b38;border-radius:12px;padding:10px}.dupMeta{font-size:12px;color:#c5ceda;margin-top:2px}.emptyState{color:#b4becb;background:#11151c;border-radius:14px;padding:14px}
+#confirmDeleteText{color:#d7deea;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="header">
+  <h2>Van VIN Manager PWA</h2>
+  <input class="search" id="search" placeholder="Search VIN or reg..." oninput="render()"/>
+  <div class="offline" id="offline">⚠️ Offline Mode - using local data</div>
+  <div class="stats" id="stats"></div>
+  <div id="warning"></div>
+  <div class="errorBox" id="errorBox"></div>
+  <button onclick="openAdd()" class="primaryAction blue">+ Add Vehicle</button>
+  <button onclick="saveData()" class="primaryAction green" style="margin-top:8px">Save / Sync</button>
+</div>
+<div id="app"></div>
+
+<div class="modalBackdrop" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle">Add Vehicle</h3>
+    <select id="typeInput">
+      <option value="diesel">Diesel</option>
+      <option value="ev">EV</option>
+      <option value="rental">Rental</option>
+      <option value="unknown">Unknown</option>
+    </select>
+    <input id="nameInput" placeholder="Reg"/>
+    <input id="vinInput" placeholder="VIN"/>
+    <div class="modalActions">
+      <button class="saveM" onclick="confirmModal()">Save</button>
+      <button class="cancelM" onclick="closeModal()">Cancel</button>
+    </div>
+    <button id="deleteBtn" class="deleteM" onclick="openDeleteConfirm()" style="display:none;padding:14px;border:none;border-radius:14px;color:white">Delete Vehicle</button>
+  </div>
+</div>
+
+<div class="modalBackdrop" id="dupModal">
+  <div class="modal">
+    <h3>Duplicate VINs</h3>
+    <div id="dupContent"></div>
+    <button class="cancelM" onclick="closeDupModal()" style="padding:14px;border:none;border-radius:14px;color:white">Close</button>
+  </div>
+</div>
+
+<div class="modalBackdrop" id="deleteModal">
+  <div class="modal">
+    <h3>Delete vehicle?</h3>
+    <div id="confirmDeleteText"></div>
+    <div class="modalActions">
+      <button class="ghostBtn" onclick="closeDeleteConfirm()">Cancel</button>
+      <button class="confirmDelete" onclick="deleteCurrentConfirmed()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast">Saved</div>
+
+<script>
+const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
+let data = { diesel:[], ev:[], rental:[], unknown:[] };
+let online = navigator.onLine;
+let editState = null;
+function showError(msg){ const box = document.getElementById('errorBox'); box.style.display = 'block'; box.textContent = msg; }
+function clearError(){ const box = document.getElementById('errorBox'); box.style.display = 'none'; box.textContent = ''; }
+function syncStatus(){ document.getElementById('offline').style.display = online ? 'none' : 'block'; }
+window.addEventListener('online', ()=>{ online = true; syncStatus(); loadData(); });
+window.addEventListener('offline', ()=>{ online = false; syncStatus(); });
+function normaliseData(obj){ return { diesel:Array.isArray(obj?.diesel)?obj.diesel:[], ev:Array.isArray(obj?.ev)?obj.ev:[], rental:Array.isArray(obj?.rental)?obj.rental:[], unknown:Array.isArray(obj?.unknown)?obj.unknown:[] }; }
+function extractData(payload){ if (!payload) return null; if (Array.isArray(payload)) { for (const item of payload) { const found = extractData(item); if (found) return found; } return null; } if (payload.data) { const nested = extractData(payload.data); if (nested) return nested; } if (payload.diesel || payload.ev || payload.rental || payload.unknown) return normaliseData(payload); return null; }
+function saveLocal(){ localStorage.setItem('vin_data', JSON.stringify(data)); }
+async function loadData(){ clearError(); try { const local = localStorage.getItem('vin_data'); if (local) data = normaliseData(JSON.parse(local)); } catch (e) { showError(`Load error: ${e.message}`); } render(); }
+async function saveData(){ saveLocal(); toast(online ? 'Synced' : 'Saved offline'); }
+function getDuplicatesMap(){ const seen = new Map(), dupMap = new Map(); for (const type of Object.keys(data)) { for (const v of data[type]) { if (!v?.vin) continue; const entry = { type, name:v.name || '', vin:v.vin || '' }; if (!seen.has(v.vin)) seen.set(v.vin, [entry]); else { const all = seen.get(v.vin); all.push(entry); seen.set(v.vin, all); dupMap.set(v.vin, all); } } } return dupMap; }
+function getDuplicateList(){ return [...getDuplicatesMap().entries()].sort((a,b)=>a[0].localeCompare(b[0])); }
+function filtered(list){ const q = document.getElementById('search').value.toLowerCase().trim(); return list.filter(v => (v.name||'').toLowerCase().includes(q) || (v.vin||'').toLowerCase().includes(q)); }
+function sortByReg(list){ return [...list].sort((a,b)=> (a.name||'').localeCompare((b.name||''), undefined, { sensitivity:'base' })); }
+function escapeHtml(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function section(title, type){ const list = sortByReg(filtered(data[type] || [])); let html = `<div class="section"><div class="sectionTitle">${title} (${list.length})</div><div class="grid">`; for (const v of list) { html += `<div class="tile"><div><div class="reg">${escapeHtml(v.name)}</div><div class="vin">${escapeHtml(v.vin)}</div><div class="tag ${type}">${type}</div></div><div class="btnRow"><button class="btn" onclick='copyText(${JSON.stringify(v.vin)})'>Copy VIN</button><button class="btn secondary" onclick='copyText(${JSON.stringify(v.name)})'>Copy REG</button><button class="btn secondary" onclick='openEdit(${JSON.stringify(type)}, ${JSON.stringify(v.vin)})'>Edit</button></div></div>`; } html += '</div></div>'; return html; }
+function render(){ data = normaliseData(data); document.getElementById('stats').innerHTML = `<span class="badge">D ${data.diesel.length}</span><span class="badge">E ${data.ev.length}</span><span class="badge">R ${data.rental.length}</span><span class="badge">U ${data.unknown.length}</span>`; const dupList = getDuplicateList(); document.getElementById('warning').innerHTML = dupList.length ? `<div class="warn" onclick="openDupModal()">⚠ ${dupList.length} duplicate VINs detected — tap to view</div>` : ''; document.getElementById('app').innerHTML = section('Diesel','diesel') + section('EV','ev') + section('Rental','rental') + section('Unknown','unknown'); }
+async function copyText(text){ try { await navigator.clipboard.writeText(String(text || '')); toast('Copied'); } catch (e) { showError('Copy failed. Clipboard needs a secure context (HTTPS) and a user tap.'); toast('Copy failed'); } }
+function openAdd(){ editState = null; document.getElementById('modalTitle').textContent = 'Add Vehicle'; document.getElementById('typeInput').value = 'diesel'; document.getElementById('nameInput').value = ''; document.getElementById('vinInput').value = ''; document.getElementById('deleteBtn').style.display = 'none'; document.getElementById('modal').style.display = 'flex'; }
+function openEdit(type, vin){ const idx = (data[type] || []).findIndex(v => v.vin === vin); if (idx === -1) return; const item = data[type][idx]; editState = { type, index: idx }; document.getElementById('modalTitle').textContent = 'Edit Vehicle'; document.getElementById('typeInput').value = type; document.getElementById('nameInput').value = item.name || ''; document.getElementById('vinInput').value = item.vin || ''; document.getElementById('deleteBtn').style.display = 'block'; document.getElementById('modal').style.display = 'flex'; }
+function closeModal(){ document.getElementById('modal').style.display = 'none'; }
+function confirmModal(){ const type = document.getElementById('typeInput').value; const name = document.getElementById('nameInput').value.trim().toUpperCase(); const vin = document.getElementById('vinInput').value.trim().toUpperCase(); if (!name || !vin) return toast('Enter reg and VIN'); if (editState) { data[editState.type].splice(editState.index, 1); data[type].push({ name, vin }); toast('Vehicle updated'); } else { data[type].push({ name, vin }); toast('Vehicle added'); } saveLocal(); closeModal(); render(); }
+function openDeleteConfirm(){ if (!editState) return; const item = data[editState.type]?.[editState.index]; if (!item) return; document.getElementById('confirmDeleteText').innerHTML = `You are about to delete <strong>${escapeHtml(item.name || '(no reg)')}</strong><br><span style="opacity:.8;font-size:12px">${escapeHtml(item.vin || '')}</span>`; document.getElementById('deleteModal').style.display = 'flex'; }
+function closeDeleteConfirm(){ document.getElementById('deleteModal').style.display = 'none'; }
+function deleteCurrentConfirmed(){ if (!editState) return; const item = data[editState.type]?.[editState.index]; if (!item) { closeDeleteConfirm(); return; } data[editState.type].splice(editState.index, 1); saveLocal(); closeDeleteConfirm(); closeModal(); render(); toast('Vehicle deleted'); }
+function openDupModal(){ const dupList = getDuplicateList(); const target = document.getElementById('dupContent'); target.innerHTML = !dupList.length ? '<div class="emptyState">No duplicate VINs found.</div>' : `<div class="dupList">${dupList.map(([vin, entries]) => `<div class="dupItem"><div><strong>${entries.length}</strong> entries share this VIN</div><div class="dupVin">${escapeHtml(vin)}</div><div class="dupEntries">${entries.map(entry => `<div class="dupEntry"><div><strong>${escapeHtml(entry.name || '(no reg)')}</strong></div><div class="dupMeta">Category: ${escapeHtml(entry.type)}</div></div>`).join('')}</div></div>`).join('')}</div>`; document.getElementById('dupModal').style.display = 'flex'; }
+function closeDupModal(){ document.getElementById('dupModal').style.display = 'none'; }
+function toast(msg){ const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1200); }
+['modal','dupModal','deleteModal'].forEach(id => document.getElementById(id).addEventListener('click', e => { if (e.target.id === id) e.target.style.display = 'none'; }));
+syncStatus(); loadData(); const manifest = { name:'Van VIN Manager', short_name:'VIN Manager', start_url:'.', display:'standalone', background_color:'#0f1115', theme_color:'#0f1115' }; const blob = new Blob([JSON.stringify(manifest)], { type:'application/json' }); document.getElementById('manifestPlace').href = URL.createObjectURL(blob);
+</script>
+</body>
+</html>
