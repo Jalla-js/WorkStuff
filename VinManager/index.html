@@ -2,112 +2,95 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VIN Manager">
+
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
 <title>Van VIN Manager</title>
 
 <style>
 :root{
-  --bg:#0b0d12;
-  --card:#151923;
-  --text:#e8ecf1;
-  --muted:#8b93a1;
-  --accent:#4aa3ff;
+  --bg:#0e1118;
+  --bg2:#121621;
+  --card2:#1b2230;
+  --text:#e7ebf3;
+  --muted:#9aa3b2;
+  --blue:#4aa3ff;
+  --green:#3bd16f;
+  --purple:#a07bff;
+  --orange:#ffb057;
+  --red:#ff5a5a;
 }
 
+/* softer light mode */
 body.light{
-  --bg:#f5f7fb;
-  --card:#ffffff;
+  --bg:#f4f6fa;
+  --bg2:#eef2f8;
+  --card2:#ffffff;
   --text:#111318;
-  --muted:#5a6472;
-  --accent:#0066ff;
+  --muted:#5c6677;
+  --blue:#2f7dff;
+  --green:#1ea85a;
+  --purple:#7a5cff;
+  --orange:#d9822b;
 }
+
+*{box-sizing:border-box}
 
 body{
   margin:0;
   font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-  background:var(--bg);
+  background:linear-gradient(180deg,var(--bg),var(--bg2));
   color:var(--text);
-  transition:0.2s ease;
-}
-
-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:14px 16px;
-}
-
-button{
-  border:none;
-  padding:10px 12px;
-  border-radius:10px;
-  background:var(--card);
-  color:var(--text);
-}
-
-.container{padding:10px 16px;}
-
-.fab{
-  position:fixed;
-  bottom:20px;
-  right:20px;
-  width:56px;
-  height:56px;
-  border-radius:50%;
-  background:var(--accent);
-  color:white;
-  font-size:26px;
-  border:none;
-}
-
-.modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.5);
-  display:none;
-  justify-content:center;
-  align-items:center;
-}
-
-.modal-content{
-  background:var(--card);
   padding:16px;
-  border-radius:16px;
-  width:90%;
-  max-width:360px;
 }
 
-input{
+/* header unchanged */
+.header{
+  position:sticky;
+  top:0;
+  background:rgba(15,17,21,.85);
+  backdrop-filter:blur(12px);
+  z-index:10;
+  padding-bottom:12px;
+}
+
+h2{margin:0;font-size:22px}
+
+.search,.modal input,.modal select{
   width:100%;
-  padding:10px;
-  margin-top:8px;
-  border-radius:10px;
-  border:1px solid #333;
-  background:transparent;
+  padding:14px;
+  border-radius:14px;
+  border:none;
+  background:var(--card2);
   color:var(--text);
 }
+
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:12px}
+.badge{padding:6px 10px;background:var(--card2);border-radius:999px}
 
 /* GRID */
+.section{margin-top:18px}
+.sectionTitle{font-weight:700;margin-bottom:10px}
+
 .grid{
   display:grid;
-  grid-template-columns:repeat(2, minmax(0,1fr));
+  grid-template-columns:repeat(2,minmax(0,1fr));
   gap:12px;
 }
 
-.section{margin-top:18px;}
-.sectionTitle{font-weight:700;margin-bottom:10px;}
-
 .tile{
-  background:var(--card);
-  padding:12px;
-  border-radius:14px;
+  background:var(--card2);
+  padding:14px;
+  border-radius:16px;
   display:flex;
   flex-direction:column;
   justify-content:space-between;
 }
 
-.reg{font-weight:800;}
-.vin{font-size:12px;opacity:.75;word-break:break-all;margin-top:4px;}
+.reg{font-weight:800}
+.vin{font-size:12px;opacity:.75;word-break:break-all;margin-top:6px}
 
 .tag{
   font-size:11px;
@@ -117,10 +100,10 @@ input{
   margin-top:6px;
 }
 
-.ev{background:var(--accent);}
-.diesel{background:#1db954;}
-.rental{background:#9c27b0;}
-.unknown{background:#ff9800;color:#111;}
+.ev{background:var(--blue)}
+.diesel{background:var(--green)}
+.rental{background:var(--purple)}
+.unknown{background:var(--orange);color:#111}
 
 .btnRow{
   display:grid;
@@ -130,110 +113,138 @@ input{
 }
 
 .btn{
-  padding:8px;
+  padding:9px;
   font-size:12px;
   border:none;
   border-radius:10px;
-  background:#2b3242;
+  background:#2a3244;
   color:white;
 }
 
-.online{font-size:12px;color:#3bd16f;}
-.offline{font-size:12px;color:#ff5a5a;}
+/* FAB (NEW ADD BUTTON) */
+.fab{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  width:58px;
+  height:58px;
+  border-radius:50%;
+  background:var(--blue);
+  color:white;
+  font-size:28px;
+  border:none;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+}
+
+/* MODAL */
+.modalBackdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  display:none;
+  justify-content:center;
+  align-items:flex-end;
+  padding:14px;
+  z-index:30;
+}
+
+.modal{
+  width:100%;
+  max-width:420px;
+  background:var(--card2);
+  border-radius:20px;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.modalActions{
+  display:flex;
+  gap:10px;
+  margin-top:4px;
+}
+
+.modalActions button{
+  flex:1;
+  padding:14px;
+  border:none;
+  border-radius:14px;
+  color:white;
+}
+
+.saveM{background:var(--green)}
+.cancelM{background:#444}
+.deleteM{background:#8e2d2d}
+
+/* status */
+.online{font-size:12px;color:var(--green)}
+.offline{font-size:12px;color:var(--red)}
 </style>
 </head>
 
 <body>
 
-<header>
-  <div>
-    <strong>Van VIN Manager</strong><br>
-    <span id="netStatus" class="small"></span>
-  </div>
+<div class="header">
+  <h2>Van VIN Manager</h2>
+  <input class="search" id="search" placeholder="Search VIN or reg..." oninput="render()"/>
 
-  <button onclick="toggleTheme()">🌓</button>
-</header>
+  <div class="stats" id="stats"></div>
+  <div id="warning"></div>
+</div>
 
-<div class="container" id="app"></div>
+<div id="app"><div style="opacity:.6">Loading vehicles…</div></div>
 
-<button class="fab" onclick="openModal()">+</button>
+<!-- FAB ADD BUTTON -->
+<button class="fab" onclick="openAdd()">+</button>
 
 <!-- MODAL -->
-<div class="modal" id="modal">
-  <div class="modal-content">
-    <h3>Add Van</h3>
+<div class="modalBackdrop" id="modal">
+  <div class="modal">
+    <h3>Add Vehicle</h3>
 
-    <input id="reg" placeholder="Reg plate"/>
-    <input id="vin" placeholder="VIN"/>
+    <select id="typeInput">
+      <option value="diesel">Diesel</option>
+      <option value="ev">EV</option>
+      <option value="rental">Rental</option>
+    </select>
 
-    <div class="type-buttons">
-      <button onclick="setType('diesel')">Diesel</button>
-      <button onclick="setType('ev')">EV</button>
-      <button onclick="setType('rental')">Rental</button>
+    <input id="nameInput" placeholder="Reg"/>
+    <input id="vinInput" placeholder="VIN"/>
+
+    <div class="modalActions">
+      <button class="saveM" onclick="confirmModal()">Save</button>
+      <button class="cancelM" onclick="closeModal()">Cancel</button>
     </div>
-
-    <div class="small">Type: <span id="typeLabel">None</span></div>
-
-    <button style="width:100%; margin-top:12px;" onclick="saveVan()">Save</button>
-    <button style="width:100%; margin-top:8px;" onclick="closeModal()">Cancel</button>
   </div>
 </div>
 
 <script>
 
 /* ================= SUPABASE ================= */
-const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc";
+const SUPABASE_URL="https://trhqigmwwfhuclaxdope.supabase.co";
+const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc";
 
 /* ================= STATE ================= */
-let vans = [];
-let selectedType = null;
-let queue = JSON.parse(localStorage.getItem("queue") || "[]");
+let data={diesel:[],ev:[],rental:[],unknown:[]};
+let editState=null;
 
 /* ================= LOAD ================= */
 async function loadData(){
-  try{
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`,{
-      headers:{
-        apikey:SUPABASE_KEY,
-        Authorization:`Bearer ${SUPABASE_KEY}`
-      }
-    });
+  const res=await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`,{
+    headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}
+  });
 
-    const json = await res.json();
-    const d = json?.[0]?.data;
+  const json=await res.json();
+  const d=json?.[0]?.data;
 
-    if(d){
-      vans = [
-        ...d.diesel.map(v=>({...v,type:"diesel"})),
-        ...d.ev.map(v=>({...v,type:"ev"})),
-        ...d.rental.map(v=>({...v,type:"rental"})),
-        ...d.unknown.map(v=>({...v,type:"unknown"}))
-      ];
-    }
+  if(d) data=d;
 
-    render();
-  } catch(e){
-    render();
-  }
+  render();
 }
 
-/* ================= SAVE ================= */
+/* ================= AUTO SAVE ================= */
 async function saveData(){
-  const grouped = {
-    diesel: vans.filter(v=>v.type==="diesel"),
-    ev: vans.filter(v=>v.type==="ev"),
-    rental: vans.filter(v=>v.type==="rental"),
-    unknown: vans.filter(v=>v.type==="unknown")
-  };
-
-  if(!navigator.onLine){
-    queue.push({type:"save",data:grouped});
-    localStorage.setItem("queue",JSON.stringify(queue));
-    localStorage.setItem("cache",JSON.stringify(vans));
-    return;
-  }
-
   await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,{
     method:"PATCH",
     headers:{
@@ -241,50 +252,57 @@ async function saveData(){
       Authorization:`Bearer ${SUPABASE_KEY}`,
       "Content-Type":"application/json"
     },
-    body:JSON.stringify({data:grouped})
+    body:JSON.stringify({data})
   });
 }
 
-/* ================= SYNC ================= */
-async function sync(){
-  if(!navigator.onLine) return;
-  for(const q of queue){
-    if(q.type==="save") await saveData();
-  }
-  queue=[];
-  localStorage.setItem("queue","[]");
-}
-
-/* ================= UI ================= */
-function openModal(){
+/* ================= ADD ================= */
+function openAdd(){
+  editState=null;
   document.getElementById("modal").style.display="flex";
 }
 
 function closeModal(){
   document.getElementById("modal").style.display="none";
-  selectedType=null;
 }
 
-function setType(t){
-  selectedType=t;
-}
+function confirmModal(){
+  const type=document.getElementById("typeInput").value;
+  const name=document.getElementById("nameInput").value.trim();
+  const vin=document.getElementById("vinInput").value.trim();
 
-function saveVan(){
-  const reg=document.getElementById("reg").value.trim();
-  const vin=document.getElementById("vin").value.trim();
+  if(!name||!vin) return;
 
-  if(!reg || !vin || !selectedType) return;
+  data[type].push({name,vin});
 
-  vans.push({name:reg,vin,type:selectedType});
-
-  saveData();
-  render();
   closeModal();
+  render();
+  saveData(); // AUTO SYNC
+}
+
+/* ================= COPY ================= */
+async function copyText(v){
+  await navigator.clipboard.writeText(v);
+}
+
+/* ================= EDIT ================= */
+function openEdit(type,vin){
+  const idx=data[type].findIndex(v=>v.vin===vin);
+  if(idx<0) return;
+
+  const item=data[type][idx];
+
+  document.getElementById("typeInput").value=type;
+  document.getElementById("nameInput").value=item.name;
+  document.getElementById("vinInput").value=item.vin;
+
+  editState={type,idx};
+  document.getElementById("modal").style.display="flex";
 }
 
 /* ================= RENDER ================= */
 function section(title,type){
-  const list=vans.filter(v=>v.type===type);
+  const list=data[type];
 
   return `
   <div class="section">
@@ -299,8 +317,8 @@ function section(title,type){
           </div>
 
           <div class="btnRow">
-            <button class="btn" onclick="copyVIN('${v.vin}')">Copy VIN</button>
-            <button class="btn" onclick="editVIN('${v.vin}')">Edit</button>
+            <button class="btn" onclick="copyText('${v.vin}')">Copy</button>
+            <button class="btn" onclick="openEdit('${type}','${v.vin}')">Edit</button>
           </div>
         </div>
       `).join("")}
@@ -309,38 +327,14 @@ function section(title,type){
 }
 
 function render(){
-  document.getElementById("app").innerHTML =
-    section("Diesel","diesel") +
-    section("EV","ev") +
-    section("Rental","rental") +
+  document.getElementById("app").innerHTML=
+    section("Diesel","diesel")+
+    section("EV","ev")+
+    section("Rental","rental")+
     section("Unknown","unknown");
 }
 
-/* ================= ACTIONS ================= */
-async function copyVIN(v){
-  await navigator.clipboard.writeText(v);
-}
-
-function editVIN(v){
-  alert("Edit system already supported in DB layer (can expand if needed)");
-}
-
-/* ================= THEME ================= */
-function toggleTheme(){
-  document.body.classList.toggle("light");
-}
-
-/* ================= NETWORK ================= */
-function updateNet(){
-  document.getElementById("netStatus").innerText =
-    navigator.onLine ? "Online" : "Offline";
-}
-
-window.addEventListener("online",()=>{updateNet();sync();});
-window.addEventListener("offline",updateNet);
-
-/* INIT */
-updateNet();
+/* ================= INIT ================= */
 loadData();
 
 </script>
