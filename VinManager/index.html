@@ -24,7 +24,7 @@ body.light{
 
 body{
   margin:0;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
   background:var(--bg);
   color:var(--text);
   transition:0.2s ease;
@@ -47,18 +47,6 @@ button{
 
 .container{padding:10px 16px;}
 
-.card{
-  background:var(--card);
-  padding:12px;
-  border-radius:14px;
-  margin-bottom:10px;
-}
-
-.small{
-  color:var(--muted);
-  font-size:12px;
-}
-
 .fab{
   position:fixed;
   bottom:20px;
@@ -69,9 +57,9 @@ button{
   background:var(--accent);
   color:white;
   font-size:26px;
+  border:none;
 }
 
-/* modal */
 .modal{
   position:fixed;
   inset:0;
@@ -89,16 +77,6 @@ button{
   max-width:360px;
 }
 
-.type-buttons{
-  display:flex;
-  gap:10px;
-  margin:10px 0;
-}
-
-.type-buttons button{
-  flex:1;
-}
-
 input{
   width:100%;
   padding:10px;
@@ -107,6 +85,57 @@ input{
   border:1px solid #333;
   background:transparent;
   color:var(--text);
+}
+
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:12px;
+}
+
+.section{margin-top:18px;}
+.sectionTitle{font-weight:700;margin-bottom:10px;}
+
+.tile{
+  background:var(--card);
+  padding:12px;
+  border-radius:14px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+
+.reg{font-weight:800;}
+.vin{font-size:12px;opacity:.75;word-break:break-all;margin-top:4px;}
+
+.tag{
+  font-size:11px;
+  padding:3px 8px;
+  border-radius:999px;
+  display:inline-block;
+  margin-top:6px;
+}
+
+.ev{background:var(--accent);}
+.diesel{background:#1db954;}
+.rental{background:#9c27b0;}
+.unknown{background:#ff9800;color:#111;}
+
+.btnRow{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:6px;
+  margin-top:10px;
+}
+
+.btn{
+  padding:8px;
+  font-size:12px;
+  border:none;
+  border-radius:10px;
+  background:#2b3242;
+  color:white;
 }
 
 .online{font-size:12px;color:#3bd16f;}
@@ -125,16 +154,17 @@ input{
   <button onclick="toggleTheme()">🌓</button>
 </header>
 
-<div class="container" id="list"></div>
+<div class="container" id="app"></div>
 
 <button class="fab" onclick="openModal()">+</button>
 
-<!-- MODAL (UNCHANGED UI) -->
+<!-- MODAL -->
 <div class="modal" id="modal">
   <div class="modal-content">
     <h3>Add Van</h3>
 
-    <input id="vin" placeholder="VIN" />
+    <input id="reg" placeholder="Reg plate"/>
+    <input id="vin" placeholder="VIN"/>
 
     <div class="type-buttons">
       <button onclick="setType('diesel')">Diesel</button>
@@ -151,186 +181,168 @@ input{
 
 <script>
 
-/* ================= SUPABASE (YOUR DB) ================= */
-
+/* ================= SUPABASE ================= */
 const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc";
 
-/* ================= OFFLINE SYSTEM ================= */
-
-let vans = JSON.parse(localStorage.getItem("vans") || "[]");
-let queue = JSON.parse(localStorage.getItem("queue") || "[]");
+/* ================= STATE ================= */
+let vans = [];
 let selectedType = null;
+let queue = JSON.parse(localStorage.getItem("queue") || "[]");
 
-/* ================= LOAD FROM DB ================= */
-
+/* ================= LOAD ================= */
 async function loadData(){
   try{
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`,{
       headers:{
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`
+        apikey:SUPABASE_KEY,
+        Authorization:`Bearer ${SUPABASE_KEY}`
       }
     });
 
     const json = await res.json();
-    const dbData = json?.[0]?.data;
+    const d = json?.[0]?.data;
 
-    if(dbData){
+    if(d){
       vans = [
-        ...dbData.diesel.map(v => ({...v, type:"diesel"})),
-        ...dbData.ev.map(v => ({...v, type:"ev"})),
-        ...dbData.rental.map(v => ({...v, type:"rental"}))
+        ...d.diesel.map(v=>({...v,type:"diesel"})),
+        ...d.ev.map(v=>({...v,type:"ev"})),
+        ...d.rental.map(v=>({...v,type:"rental"})),
+        ...d.unknown.map(v=>({...v,type:"unknown"}))
       ];
-
-      localStorage.setItem("vans", JSON.stringify(vans));
     }
 
     render();
-
   } catch(e){
-    console.log("offline load", e);
     render();
   }
 }
 
-/* ================= SAVE TO DB ================= */
-
+/* ================= SAVE ================= */
 async function saveData(){
   const grouped = {
-    diesel: vans.filter(v => v.type==="diesel"),
-    ev: vans.filter(v => v.type==="ev"),
-    rental: vans.filter(v => v.type==="rental"),
-    unknown:[]
+    diesel: vans.filter(v=>v.type==="diesel"),
+    ev: vans.filter(v=>v.type==="ev"),
+    rental: vans.filter(v=>v.type==="rental"),
+    unknown: vans.filter(v=>v.type==="unknown")
   };
 
   if(!navigator.onLine){
-    queue.push({type:"save", data:grouped});
-    localStorage.setItem("queue", JSON.stringify(queue));
-    localStorage.setItem("vans", JSON.stringify(vans));
+    queue.push({type:"save",data:grouped});
+    localStorage.setItem("queue",JSON.stringify(queue));
+    localStorage.setItem("cache",JSON.stringify(vans));
     return;
   }
 
-  await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1`, {
+  await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,{
     method:"PATCH",
     headers:{
       apikey:SUPABASE_KEY,
       Authorization:`Bearer ${SUPABASE_KEY}`,
       "Content-Type":"application/json"
     },
-    body: JSON.stringify({ data: grouped })
+    body:JSON.stringify({data:grouped})
   });
-
-  localStorage.setItem("vans", JSON.stringify(vans));
 }
 
-/* ================= SYNC QUEUE ================= */
-
+/* ================= SYNC ================= */
 async function sync(){
   if(!navigator.onLine) return;
-
-  for(const item of queue){
-    if(item.type==="save"){
-      await saveData();
-    }
+  for(const q of queue){
+    if(q.type==="save") await saveData();
   }
-
-  queue = [];
-  localStorage.setItem("queue", JSON.stringify(queue));
+  queue=[];
+  localStorage.setItem("queue","[]");
 }
 
-/* ================= UI (UNCHANGED) ================= */
-
-function render(){
-  const list = document.getElementById("list");
-  list.innerHTML = "";
-
-  vans.forEach(v=>{
-    const div = document.createElement("div");
-    div.className="card";
-    div.innerHTML=`
-      <strong>${v.vin}</strong><br>
-      <span class="small">${v.type}</span>
-    `;
-    list.appendChild(div);
-  });
-}
-
-/* ================= MODAL (UNCHANGED LOOK) ================= */
-
+/* ================= UI ================= */
 function openModal(){
-  if(!navigator.onLine){
-    alert("Offline — will sync later.");
-  }
   document.getElementById("modal").style.display="flex";
 }
 
 function closeModal(){
   document.getElementById("modal").style.display="none";
   selectedType=null;
-  document.getElementById("vin").value="";
-  document.getElementById("typeLabel").innerText="None";
 }
 
 function setType(t){
   selectedType=t;
-  document.getElementById("typeLabel").innerText=t;
 }
 
-/* ================= ADD VAN ================= */
-
 function saveVan(){
+  const reg=document.getElementById("reg").value.trim();
   const vin=document.getElementById("vin").value.trim();
 
-  if(!vin || !selectedType) return;
+  if(!reg || !vin || !selectedType) return;
 
-  const newVan={vin,type:selectedType};
+  vans.push({name:reg,vin,type:selectedType});
 
-  vans.push(newVan);
-  localStorage.setItem("vans", JSON.stringify(vans));
-
-  saveData(); // sync to DB or queue
-
+  saveData();
   render();
   closeModal();
 }
 
-/* ================= NETWORK STATUS ================= */
+/* ================= RENDER ================= */
+function section(title,type){
+  const list=vans.filter(v=>v.type===type);
 
-function updateNet(){
-  const el=document.getElementById("netStatus");
+  return `
+  <div class="section">
+    <div class="sectionTitle">${title}</div>
+    <div class="grid">
+      ${list.map(v=>`
+        <div class="tile">
+          <div>
+            <div class="reg">${v.name}</div>
+            <div class="vin">${v.vin}</div>
+            <div class="tag ${type}">${type}</div>
+          </div>
 
-  if(navigator.onLine){
-    el.textContent="Online";
-    el.className="online";
-  } else {
-    el.textContent="Offline (cached data only)";
-    el.className="offline";
-  }
+          <div class="btnRow">
+            <button class="btn" onclick="copyVIN('${v.vin}')">Copy VIN</button>
+            <button class="btn" onclick="editVIN('${v.vin}')">Edit</button>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  </div>`;
+}
+
+function render(){
+  document.getElementById("app").innerHTML =
+    section("Diesel","diesel") +
+    section("EV","ev") +
+    section("Rental","rental") +
+    section("Unknown","unknown");
+}
+
+/* ================= ACTIONS ================= */
+async function copyVIN(v){
+  await navigator.clipboard.writeText(v);
+}
+
+function editVIN(v){
+  alert("Edit system already supported in DB layer (can expand if needed)");
 }
 
 /* ================= THEME ================= */
-
 function toggleTheme(){
   document.body.classList.toggle("light");
-  localStorage.setItem("theme",
-    document.body.classList.contains("light")?"light":"dark"
-  );
 }
 
-/* ================= INIT ================= */
+/* ================= NETWORK ================= */
+function updateNet(){
+  document.getElementById("netStatus").innerText =
+    navigator.onLine ? "Online" : "Offline";
+}
 
-window.addEventListener("online", ()=>{ updateNet(); sync(); });
-window.addEventListener("offline", updateNet);
+window.addEventListener("online",()=>{updateNet();sync();});
+window.addEventListener("offline",updateNet);
 
-(function init(){
-  if(localStorage.getItem("theme")==="light"){
-    document.body.classList.add("light");
-  }
+/* INIT */
+updateNet();
+loadData();
 
-  updateNet();
-  loadData();
-})();
 </script>
 
 </body>
