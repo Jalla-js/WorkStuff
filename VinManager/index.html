@@ -2,6 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VIN Manager">
+
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
 <title>Van VIN Manager</title>
 <style>
@@ -135,6 +141,9 @@ function closeDupModal(){ document.getElementById('dupModal').style.display = 'n
 function toast(msg){ const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1200); }
 ['modal','dupModal','deleteModal'].forEach(id => document.getElementById(id).addEventListener('click', e => { if (e.target.id === id) e.target.style.display = 'none'; }));
 loadData();
+  if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js');
+}
 </script>
 </body>
 </html>
