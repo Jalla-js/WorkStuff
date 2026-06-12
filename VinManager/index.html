@@ -2,342 +2,148 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="VIN Manager">
 
+<link rel="apple-touch-icon" href="icon-512.png">
+<link rel="manifest" href="manifest.json">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
 <title>Van VIN Manager</title>
-
 <style>
-:root{
-  --bg:#0e1118;
-  --bg2:#121621;
-  --card2:#1b2230;
-  --text:#e7ebf3;
-  --muted:#9aa3b2;
-  --blue:#4aa3ff;
-  --green:#3bd16f;
-  --purple:#a07bff;
-  --orange:#ffb057;
-  --red:#ff5a5a;
-}
-
-/* softer light mode */
-body.light{
-  --bg:#f4f6fa;
-  --bg2:#eef2f8;
-  --card2:#ffffff;
-  --text:#111318;
-  --muted:#5c6677;
-  --blue:#2f7dff;
-  --green:#1ea85a;
-  --purple:#7a5cff;
-  --orange:#d9822b;
-}
-
-*{box-sizing:border-box}
-
-body{
-  margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-  background:linear-gradient(180deg,var(--bg),var(--bg2));
-  color:var(--text);
-  padding:16px;
-}
-
-/* header unchanged */
-.header{
-  position:sticky;
-  top:0;
-  background:rgba(15,17,21,.85);
-  backdrop-filter:blur(12px);
-  z-index:10;
-  padding-bottom:12px;
-}
-
-h2{margin:0;font-size:22px}
-
-.search,.modal input,.modal select{
-  width:100%;
-  padding:14px;
-  border-radius:14px;
-  border:none;
-  background:var(--card2);
-  color:var(--text);
-}
-
-.stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:12px}
-.badge{padding:6px 10px;background:var(--card2);border-radius:999px}
-
-/* GRID */
-.section{margin-top:18px}
-.sectionTitle{font-weight:700;margin-bottom:10px}
-
-.grid{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:12px;
-}
-
-.tile{
-  background:var(--card2);
-  padding:14px;
-  border-radius:16px;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
-}
-
-.reg{font-weight:800}
-.vin{font-size:12px;opacity:.75;word-break:break-all;margin-top:6px}
-
-.tag{
-  font-size:11px;
-  padding:3px 8px;
-  border-radius:999px;
-  display:inline-block;
-  margin-top:6px;
-}
-
-.ev{background:var(--blue)}
-.diesel{background:var(--green)}
-.rental{background:var(--purple)}
-.unknown{background:var(--orange);color:#111}
-
-.btnRow{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:6px;
-  margin-top:10px;
-}
-
-.btn{
-  padding:9px;
-  font-size:12px;
-  border:none;
-  border-radius:10px;
-  background:#2a3244;
-  color:white;
-}
-
-/* FAB (NEW ADD BUTTON) */
-.fab{
-  position:fixed;
-  bottom:20px;
-  right:20px;
-  width:58px;
-  height:58px;
-  border-radius:50%;
-  background:var(--blue);
-  color:white;
-  font-size:28px;
-  border:none;
-  box-shadow:0 10px 30px rgba(0,0,0,.35);
-}
-
-/* MODAL */
-.modalBackdrop{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.6);
-  display:none;
-  justify-content:center;
-  align-items:flex-end;
-  padding:14px;
-  z-index:30;
-}
-
-.modal{
-  width:100%;
-  max-width:420px;
-  background:var(--card2);
-  border-radius:20px;
-  padding:16px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-
-.modalActions{
-  display:flex;
-  gap:10px;
-  margin-top:4px;
-}
-
-.modalActions button{
-  flex:1;
-  padding:14px;
-  border:none;
-  border-radius:14px;
-  color:white;
-}
-
-.saveM{background:var(--green)}
-.cancelM{background:#444}
-.deleteM{background:#8e2d2d}
-
-/* status */
-.online{font-size:12px;color:var(--green)}
-.offline{font-size:12px;color:var(--red)}
+:root{--bg:#0b0d12;--bg2:#0f1115;--card2:#1a1d24;--text:#fff;--blue:#2684ff;--green:#1db954;--purple:#9c27b0;--orange:#ff9800;--red:#ff3b30}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);padding:16px}button,input,select{font:inherit}
+.header{position:sticky;top:0;background:rgba(15,17,21,.94);backdrop-filter:blur(12px);z-index:10;padding-bottom:12px}h2{margin:0;font-size:22px}
+.search,.modal input,.modal select{width:100%;padding:14px;border-radius:14px;border:none;background:var(--card2);color:var(--text)}.search{margin-top:10px}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:12px}.badge{padding:6px 10px;background:var(--card2);border-radius:999px}
+.warn{background:var(--orange);color:#111;padding:10px;border-radius:12px;margin-top:10px;font-weight:700;cursor:pointer}.errorBox{padding:10px;border-radius:12px;margin-top:10px;display:none;background:#4a1717;color:#ffd4d4;white-space:pre-wrap}
+.section{margin-top:18px}.sectionTitle{font-weight:700;margin-bottom:10px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tile{background:var(--card2);padding:14px;border-radius:16px;min-height:144px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;min-width:0}
+.reg{font-weight:800}.vin{font-size:12px;opacity:.75;word-break:break-all;margin-top:6px}.tag{font-size:11px;padding:3px 8px;border-radius:999px;display:inline-block;margin-top:6px}.ev{background:var(--blue)}.diesel{background:var(--green)}.rental{background:var(--purple)}.unknown{background:var(--orange);color:#111}
+.btnRow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.btn{padding:9px;font-size:12px;border:none;border-radius:10px;background:#313846;color:white;min-width:0}.btn.secondary{background:#3c4557}
+.primaryAction{margin-top:10px;width:100%;padding:14px;border:none;border-radius:14px;color:white;font-weight:700}.blue{background:var(--blue)}.green{background:var(--green)}
+.modalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;justify-content:center;align-items:flex-end;padding:14px;z-index:30}.modal{width:100%;max-width:420px;max-height:85vh;overflow:auto;background:var(--card2);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.modalActions{display:flex;gap:10px;margin-top:4px}.modalActions button{flex:1;padding:14px;border:none;border-radius:14px;color:white}.saveM{background:var(--green)}.cancelM{background:#444}.deleteM{background:#792828}.confirmDelete{background:#8e2d2d}.ghostBtn{background:#444}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:10px 14px;border-radius:14px;opacity:0;transition:.3s;pointer-events:none;z-index:40}.show{opacity:1}
+.dupList{display:flex;flex-direction:column;gap:10px;margin-top:4px}.dupItem{background:#11151c;border-radius:14px;padding:12px}.dupVin{font-size:12px;opacity:.8;word-break:break-all;margin-top:4px}.dupEntries{display:flex;flex-direction:column;gap:8px;margin-top:10px}.dupEntry{background:#0d1117;border:1px solid #222b38;border-radius:12px;padding:10px}.dupMeta{font-size:12px;color:#c5ceda;margin-top:2px}.emptyState{color:#b4becb;background:#11151c;border-radius:14px;padding:14px}
+#confirmDeleteText{color:#d7deea;line-height:1.45}.loading{margin-top:16px;color:#c8d0dc}
 </style>
+  <meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
 </head>
-
 <body>
-
 <div class="header">
   <h2>Van VIN Manager</h2>
   <input class="search" id="search" placeholder="Search VIN or reg..." oninput="render()"/>
-
   <div class="stats" id="stats"></div>
   <div id="warning"></div>
+  <div class="errorBox" id="errorBox"></div>
+  <button onclick="openAdd()" class="primaryAction blue">+ Add Vehicle</button>
+  <button onclick="saveData()" class="primaryAction green" style="margin-top:8px">Save</button>
 </div>
+<div id="app"><div class="loading">Loading vehicles…</div></div>
 
-<div id="app"><div style="opacity:.6">Loading vehicles…</div></div>
-
-<!-- FAB ADD BUTTON -->
-<button class="fab" onclick="openAdd()">+</button>
-
-<!-- MODAL -->
 <div class="modalBackdrop" id="modal">
   <div class="modal">
-    <h3>Add Vehicle</h3>
-
+    <h3 id="modalTitle">Add Vehicle</h3>
     <select id="typeInput">
       <option value="diesel">Diesel</option>
       <option value="ev">EV</option>
       <option value="rental">Rental</option>
+      <option value="unknown">Unknown</option>
     </select>
-
     <input id="nameInput" placeholder="Reg"/>
     <input id="vinInput" placeholder="VIN"/>
-
     <div class="modalActions">
       <button class="saveM" onclick="confirmModal()">Save</button>
       <button class="cancelM" onclick="closeModal()">Cancel</button>
     </div>
+    <button id="deleteBtn" class="deleteM" onclick="openDeleteConfirm()" style="display:none;padding:14px;border:none;border-radius:14px;color:white">Delete Vehicle</button>
   </div>
 </div>
 
-<script>
+<div class="modalBackdrop" id="dupModal">
+  <div class="modal">
+    <h3>Duplicate VINs</h3>
+    <div id="dupContent"></div>
+    <button class="cancelM" onclick="closeDupModal()" style="padding:14px;border:none;border-radius:14px;color:white">Close</button>
+  </div>
+</div>
 
-/* ================= SUPABASE ================= */
-const SUPABASE_URL="https://trhqigmwwfhuclaxdope.supabase.co";
-const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc";
-
-/* ================= STATE ================= */
-let data={diesel:[],ev:[],rental:[],unknown:[]};
-let editState=null;
-
-/* ================= LOAD ================= */
-async function loadData(){
-  const res=await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`,{
-    headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}
-  });
-
-  const json=await res.json();
-  const d=json?.[0]?.data;
-
-  if(d) data=d;
-
-  render();
-}
-
-/* ================= AUTO SAVE ================= */
-async function saveData(){
-  await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1`,{
-    method:"PATCH",
-    headers:{
-      apikey:SUPABASE_KEY,
-      Authorization:`Bearer ${SUPABASE_KEY}`,
-      "Content-Type":"application/json"
-    },
-    body:JSON.stringify({data})
-  });
-}
-
-/* ================= ADD ================= */
-function openAdd(){
-  editState=null;
-  document.getElementById("modal").style.display="flex";
-}
-
-function closeModal(){
-  document.getElementById("modal").style.display="none";
-}
-
-function confirmModal(){
-  const type=document.getElementById("typeInput").value;
-  const name=document.getElementById("nameInput").value.trim();
-  const vin=document.getElementById("vinInput").value.trim();
-
-  if(!name||!vin) return;
-
-  data[type].push({name,vin});
-
-  closeModal();
-  render();
-  saveData(); // AUTO SYNC
-}
-
-/* ================= COPY ================= */
-async function copyText(v){
-  await navigator.clipboard.writeText(v);
-}
-
-/* ================= EDIT ================= */
-function openEdit(type,vin){
-  const idx=data[type].findIndex(v=>v.vin===vin);
-  if(idx<0) return;
-
-  const item=data[type][idx];
-
-  document.getElementById("typeInput").value=type;
-  document.getElementById("nameInput").value=item.name;
-  document.getElementById("vinInput").value=item.vin;
-
-  editState={type,idx};
-  document.getElementById("modal").style.display="flex";
-}
-
-/* ================= RENDER ================= */
-function section(title,type){
-  const list=data[type];
-
-  return `
-  <div class="section">
-    <div class="sectionTitle">${title}</div>
-    <div class="grid">
-      ${list.map(v=>`
-        <div class="tile">
-          <div>
-            <div class="reg">${v.name}</div>
-            <div class="vin">${v.vin}</div>
-            <div class="tag ${type}">${type}</div>
-          </div>
-
-          <div class="btnRow">
-            <button class="btn" onclick="copyText('${v.vin}')">Copy</button>
-            <button class="btn" onclick="openEdit('${type}','${v.vin}')">Edit</button>
-          </div>
-        </div>
-      `).join("")}
+<div class="modalBackdrop" id="deleteModal">
+  <div class="modal">
+    <h3>Delete vehicle?</h3>
+    <div id="confirmDeleteText"></div>
+    <div class="modalActions">
+      <button class="ghostBtn" onclick="closeDeleteConfirm()">Cancel</button>
+      <button class="confirmDelete" onclick="deleteCurrentConfirmed()">Delete</button>
     </div>
-  </div>`;
-}
+  </div>
+</div>
 
-function render(){
-  document.getElementById("app").innerHTML=
-    section("Diesel","diesel")+
-    section("EV","ev")+
-    section("Rental","rental")+
-    section("Unknown","unknown");
-}
+<div id="toast" class="toast">Saved</div>
 
-/* ================= INIT ================= */
+<script>
+const SUPABASE_URL = "https://trhqigmwwfhuclaxdope.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyaHFpZ213d2ZodWNsYXhkb3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDEyNjcsImV4cCI6MjA5NTMxNzI2N30.XYXIXzCFqx5R2AoZ286WrKMN-FCSl_AZ9LoGdLuKMDc";
+let data = { diesel:[], ev:[], rental:[], unknown:[] };
+let editState = null;
+function showError(msg){ const box = document.getElementById('errorBox'); box.style.display = 'block'; box.textContent = msg; }
+function clearError(){ const box = document.getElementById('errorBox'); box.style.display = 'none'; box.textContent = ''; }
+function normaliseData(obj){ return { diesel:Array.isArray(obj?.diesel)?obj.diesel:[], ev:Array.isArray(obj?.ev)?obj.ev:[], rental:Array.isArray(obj?.rental)?obj.rental:[], unknown:Array.isArray(obj?.unknown)?obj.unknown:[] }; }
+function extractData(payload){ if (!payload) return null; if (Array.isArray(payload)) { for (const item of payload) { const found = extractData(item); if (found) return found; } return null; } if (payload.data) { const nested = extractData(payload.data); if (nested) return nested; } if (payload.diesel || payload.ev || payload.rental || payload.unknown) return normaliseData(payload); return null; }
+async function loadData(){
+  clearError();
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1&select=data`, { headers:{ apikey:SUPABASE_KEY, Authorization:`Bearer ${SUPABASE_KEY}` } });
+    if (!res.ok) throw new Error(await res.text());
+    const json = await res.json();
+    const extracted = extractData(json);
+    data = extracted ? extracted : normaliseData({});
+    render();
+  } catch (e) {
+    showError(`Load error: ${e.message}`);
+    data = normaliseData({});
+    render();
+  }
+}
+async function saveData(){
+  clearError();
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/van_data?id=eq.1`, {
+      method:'PATCH',
+      headers:{ apikey:SUPABASE_KEY, Authorization:`Bearer ${SUPABASE_KEY}`, 'Content-Type':'application/json', Prefer:'return=minimal' },
+      body:JSON.stringify({ data })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast('Saved');
+  } catch (e) {
+    showError(`Save error: ${e.message}`);
+    toast('Save failed');
+  }
+}
+function getDuplicatesMap(){ const seen = new Map(), dupMap = new Map(); for (const type of Object.keys(data)) { for (const v of data[type]) { if (!v?.vin) continue; const entry = { type, name:v.name || '', vin:v.vin || '' }; if (!seen.has(v.vin)) seen.set(v.vin, [entry]); else { const all = seen.get(v.vin); all.push(entry); seen.set(v.vin, all); dupMap.set(v.vin, all); } } } return dupMap; }
+function getDuplicateList(){ return [...getDuplicatesMap().entries()].sort((a,b)=>a[0].localeCompare(b[0])); }
+function filtered(list){ const q = document.getElementById('search').value.toLowerCase().trim(); return list.filter(v => (v.name||'').toLowerCase().includes(q) || (v.vin||'').toLowerCase().includes(q)); }
+function sortByReg(list){ return [...list].sort((a,b)=> (a.name||'').localeCompare((b.name||''), undefined, { sensitivity:'base' })); }
+function escapeHtml(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function section(title, type){ const list = sortByReg(filtered(data[type] || [])); let html = `<div class="section"><div class="sectionTitle">${title} (${list.length})</div><div class="grid">`; for (const v of list) { html += `<div class="tile"><div><div class="reg">${escapeHtml(v.name)}</div><div class="vin">${escapeHtml(v.vin)}</div><div class="tag ${type}">${type}</div></div><div class="btnRow"><button class="btn" onclick='copyText(${JSON.stringify(v.vin)})'>Copy VIN</button><button class="btn secondary" onclick='openEdit(${JSON.stringify(type)}, ${JSON.stringify(v.vin)})'>Edit</button></div></div>`; } html += '</div></div>'; return html; }
+function render(){ data = normaliseData(data); document.getElementById('stats').innerHTML = `<span class="badge">D ${data.diesel.length}</span><span class="badge">E ${data.ev.length}</span><span class="badge">R ${data.rental.length}</span><span class="badge">U ${data.unknown.length}</span>`; const dupList = getDuplicateList(); document.getElementById('warning').innerHTML = dupList.length ? `<div class="warn" onclick="openDupModal()">⚠ ${dupList.length} duplicate VINs detected — tap to view</div>` : ''; document.getElementById('app').innerHTML = section('Diesel','diesel') + section('EV','ev') + section('Rental','rental') + section('Unknown','unknown'); }
+async function copyText(text){ try { await navigator.clipboard.writeText(String(text || '')); toast('Copied'); } catch (e) { showError('Copy failed. Clipboard needs a secure context (HTTPS) and a user tap.'); toast('Copy failed'); } }
+function openAdd(){ editState = null; document.getElementById('modalTitle').textContent = 'Add Vehicle'; document.getElementById('typeInput').value = 'diesel'; document.getElementById('nameInput').value = ''; document.getElementById('vinInput').value = ''; document.getElementById('deleteBtn').style.display = 'none'; document.getElementById('modal').style.display = 'flex'; }
+function openEdit(type, vin){ const idx = (data[type] || []).findIndex(v => v.vin === vin); if (idx === -1) return; const item = data[type][idx]; editState = { type, index: idx }; document.getElementById('modalTitle').textContent = 'Edit Vehicle'; document.getElementById('typeInput').value = type; document.getElementById('nameInput').value = item.name || ''; document.getElementById('vinInput').value = item.vin || ''; document.getElementById('deleteBtn').style.display = 'block'; document.getElementById('modal').style.display = 'flex'; }
+function closeModal(){ document.getElementById('modal').style.display = 'none'; }
+function confirmModal(){ const type = document.getElementById('typeInput').value; const name = document.getElementById('nameInput').value.trim().toUpperCase(); const vin = document.getElementById('vinInput').value.trim().toUpperCase(); if (!name || !vin) return toast('Enter reg and VIN'); if (editState) { data[editState.type].splice(editState.index, 1); data[type].push({ name, vin }); toast('Vehicle updated'); } else { data[type].push({ name, vin }); toast('Vehicle added'); } closeModal(); render(); saveData(); }
+function openDeleteConfirm(){ if (!editState) return; const item = data[editState.type]?.[editState.index]; if (!item) return; document.getElementById('confirmDeleteText').innerHTML = `You are about to delete <strong>${escapeHtml(item.name || '(no reg)')}</strong><br><span style="opacity:.8;font-size:12px">${escapeHtml(item.vin || '')}</span>`; document.getElementById('deleteModal').style.display = 'flex'; }
+function closeDeleteConfirm(){ document.getElementById('deleteModal').style.display = 'none'; }
+function deleteCurrentConfirmed(){ if (!editState) return; const item = data[editState.type]?.[editState.index]; if (!item) { closeDeleteConfirm(); return; } data[editState.type].splice(editState.index, 1); closeDeleteConfirm(); closeModal(); render(); saveData(); toast('Vehicle deleted'); }
+function openDupModal(){ const dupList = getDuplicateList(); const target = document.getElementById('dupContent'); target.innerHTML = !dupList.length ? '<div class="emptyState">No duplicate VINs found.</div>' : `<div class="dupList">${dupList.map(([vin, entries]) => `<div class="dupItem"><div><strong>${entries.length}</strong> entries share this VIN</div><div class="dupVin">${escapeHtml(vin)}</div><div class="dupEntries">${entries.map(entry => `<div class="dupEntry"><div><strong>${escapeHtml(entry.name || '(no reg)')}</strong></div><div class="dupMeta">Category: ${escapeHtml(entry.type)}</div></div>`).join('')}</div></div>`).join('')}</div>`; document.getElementById('dupModal').style.display = 'flex'; }
+function closeDupModal(){ document.getElementById('dupModal').style.display = 'none'; }
+function toast(msg){ const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1200); }
+['modal','dupModal','deleteModal'].forEach(id => document.getElementById(id).addEventListener('click', e => { if (e.target.id === id) e.target.style.display = 'none'; }));
 loadData();
-
+  if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js');
+}
 </script>
-
 </body>
 </html>
